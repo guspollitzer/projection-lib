@@ -3,33 +3,56 @@ package graph
 
 import scala.collection.immutable
 
+object Stage {
+	trait InPort {
+		def from: OutPort
+	}
+	trait OutPort {
+		def to: InPort
+	}
+}
+
 trait Stage {
+	import Stage.*
+	
 	def name: String
 	def ordinal: Int
+
+	class In private[graph] extends InPort {
+		private[graph] var _from: OutPort = _
+		def from = _from
+	}
+
+	class Out extends OutPort {
+		private [graph] var _to: InPort = _
+		def to = _to
+	}
 }
 
-class Source(val name: String, val ordinal: Int) extends Stage {
-	val outPort = new OutPort(this)
-}
+package stages:
 
-class Sink(val name: String, val ordinal: Int) extends Stage {
-	val inPort = new InPort(this)
-}
-
-class Flow(val name: String, val ordinal: Int) extends Stage {
-	val inPort = new InPort(this)
-	val outPort = new OutPort(this)
-}
-
-class Fork2(val name: String, val ordinal: Int) extends Stage {
-	val inPort = new InPort(this)
-	val outPortA = new OutPort(this)
-	val outPortB = new OutPort(this)
-}
-
-class Join2(val name: String, val ordinal: Int) extends Stage {
-	val inPortA = new InPort(this)
-	val inPortB = new InPort(this)
-	val outPort = new OutPort(this)
-}
-
+	class Source(val name: String, val ordinal: Int) extends Stage {
+		val out = Out()
+	}
+	
+	class Sink(val name: String, val ordinal: Int) extends Stage {
+		val in = In()
+	}
+	
+	class Flow(val name: String, val ordinal: Int) extends Stage {
+		val in = In()
+		val out = Out()
+	}
+	
+	class Fork2(val name: String, val ordinal: Int) extends Stage {
+		val in = In()
+		val outA = Out()
+		val outB = Out()
+	}
+	
+	class Join2(val name: String, val ordinal: Int) extends Stage {
+		val inA = In()
+		val inB = In()
+		val out = Out()
+	}
+	
