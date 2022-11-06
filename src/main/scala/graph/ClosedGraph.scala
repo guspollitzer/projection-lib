@@ -6,25 +6,28 @@ import collection.mutable.ArrayBuffer
 
 object ClosedGraph {
 
-	def build(body: Builder => Unit): ClosedGraph = {
+	def build(body: Builder => Unit): Either[List[String], ClosedGraph] = {
 		val builder = new Builder()
 		body.apply(builder)
 
-		val seqBuilder = IndexedSeq.newBuilder[Stage]
-		var index = 0;
-		for sketch <- builder.sketchs do {
-			seqBuilder += sketch.arise(index)
-			index += 1
-		}
-		ClosedGraph(seqBuilder.result())
+		val incorrectlyWiredPorts = for
+			stage <- builder.stages
+			(portName, port) <- stage.ports
+			message <- port.incorreclyWiredMessage
+		yield s"${stage.name} - $portName: $message"
+
+		if incorrectlyWiredPorts.isEmpty
+		then Right(ClosedGraph(builder.stages.toIndexedSeq))
+		else Left(incorrectlyWiredPorts.toList)
 	}
 
 	class Builder private[ClosedGraph]() {
-		val sketchs = ArrayBuffer[Sketch]()
+		val stages = ArrayBuffer[Stage]()
 
-		def register(sketch: Sketch): Unit = {
-			if !sketchs.contains(sketch) then
-				sketchs.addOne(sketch)
+		def register(stage: Stage): Unit = {
+			assert(!stages.contains(stage))
+			stage.ordinal = stages.size
+			stages.addOne(stage)
 		}
 	}
 

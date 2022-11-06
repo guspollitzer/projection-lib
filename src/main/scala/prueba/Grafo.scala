@@ -2,16 +2,21 @@ package wms.flow.planner
 package prueba
 
 import graph.*
-import sketchs.*
 
-class Grafo {
+object Grafo {
 
-	ClosedGraph.build(builder => {
-		given ClosedGraph.Builder = builder
+	def main(args: Array[String]): Unit = {
 
-		val source = Source("source")
-		val sink = Sink("sink")
+		val result = ClosedGraph.build(builder => {
+			given ClosedGraph.Builder = builder
 
-		source.outPort ~> sink.inPort
-	})
+			val source = Source("source")
+			val sink = Sink("sink")
+
+			source.out ~> sink.in
+		})
+
+		println(result)
+
+	}
 }
