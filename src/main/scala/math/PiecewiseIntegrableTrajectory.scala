@@ -7,11 +7,12 @@ import time.Instant
 
 object PiecewiseIntegrableTrajectory {
 	
-	trait LinearInterval[+A] {
-		/** Should be equal to previous interval end. */
+	/** A piece of the trajectory between two consecutive inflection points. */
+	trait Piece[+A] {
+		/** The instant at which this piece starts. Should be equal to previous piece `end`. */
 		def start: Instant
 
-		/** Should be equal to next interval start. */
+		/** The instant at which this piece ends. Should be equal to next piece `start. */
 		def end: Instant
 
 		/** Equivalent to {{{integral(this.start, this.end)}}} */
@@ -29,5 +30,5 @@ object PiecewiseIntegrableTrajectory {
 trait PiecewiseIntegrableTrajectory[+A] {
 	import PiecewiseIntegrableTrajectory.*
 
-	def byLinearIntervalIndex: immutable.IndexedSeq[LinearInterval[A]]
+	def byPieceIndex: immutable.IndexedSeq[Piece[A]]
 }

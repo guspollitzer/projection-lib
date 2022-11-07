@@ -23,12 +23,12 @@ given QueueOps[FifoQueue] with {
 
 			case head::tail =>
 				val takenFromHeap = head.take(quantityToConsume)
-				if takenFromHeap.ignored == 0 then {
+				if takenFromHeap.excess == 0 then {
 					Consumption[FifoQueue](takenFromHeap.remaining::tail, List(takenFromHeap.consumed), 0)
 				} else {
 					assert(takenFromHeap.consumed.nonEmpty)
-					val consumedFromTail = tail.consumed(takenFromHeap.ignored)
-					Consumption[FifoQueue](consumedFromTail.remaining, takenFromHeap.consumed :: consumedFromTail.consumed, consumedFromTail.ignored)
+					val consumedFromTail = tail.consumed(takenFromHeap.excess)
+					Consumption[FifoQueue](consumedFromTail.remaining, takenFromHeap.consumed :: consumedFromTail.consumed, consumedFromTail.excess)
 				}
 		}
 	}

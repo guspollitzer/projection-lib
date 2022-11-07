@@ -33,4 +33,6 @@ object ClosedGraph {
 
 }
 
-class ClosedGraph private[ClosedGraph](val stages: IndexedSeq[Stage])
+class ClosedGraph private[ClosedGraph](val stages: IndexedSeq[Stage]) {
+	def getSinks: Seq[Sink] = stages.collect { case s: Sink => s }
+}

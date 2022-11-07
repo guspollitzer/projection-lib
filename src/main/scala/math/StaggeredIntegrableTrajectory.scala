@@ -3,14 +3,14 @@ package math
 
 import time.*
 
-import PiecewiseIntegrableTrajectory.LinearInterval
-import StaggeredIntegrableTrajectory.Interval
+import PiecewiseIntegrableTrajectory.Piece
+import StaggeredIntegrableTrajectory.Step
 
 import scala.collection.immutable
 
 object StaggeredIntegrableTrajectory {
 
-	case class Interval[A: Fractionable](start: Instant, end: Instant, wholeIntegral: A) extends LinearInterval[A] {
+	case class Step[A: Fractionable](start: Instant, end: Instant, wholeIntegral: A) extends Piece[A] {
 
 		override def integral(from: Instant, to: Instant): A =
 			assert(from >= start && to <= end)
@@ -21,7 +21,7 @@ object StaggeredIntegrableTrajectory {
 }
 
 case class StaggeredIntegrableTrajectory[A : Fractionable](
-	byLinearIntervalIndex: immutable.IndexedSeq[Interval[A]]
+	byPieceIndex: immutable.IndexedSeq[Step[A]]
 ) extends PiecewiseIntegrableTrajectory[A] {
 
 

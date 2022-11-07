@@ -5,16 +5,16 @@ import global.{Quantity, Category}
 
 type Heap = Map[Category, Quantity]
 
-extension (a: Heap) {
+extension (heap: Heap) {
 	def take(quantityToConsume: Quantity): Consumption[Heap] = {
-		val total: Quantity = a.values.sum
-		if quantityToConsume >= total then {
-			Consumption(Map.empty, a, quantityToConsume - total)
+		val heapTotal: Quantity = heap.values.sum
+		if quantityToConsume >= heapTotal then {
+			Consumption(Map.empty, heap, quantityToConsume - heapTotal)
 		} else {
-			val consumedFraction = quantityToConsume / total
-			val remainingFraction = total - consumedFraction;
-			val remaining = a.map((c, q) => c -> q * remainingFraction)
-			val consumed = a.map((c, q) => c -> q * remainingFraction)
+			val consumedFraction = quantityToConsume / heapTotal
+			val remainingFraction = heapTotal - consumedFraction;
+			val remaining = heap.map((c, q) => c -> q * remainingFraction)
+			val consumed = heap.map((c, q) => c -> q * remainingFraction)
 			Consumption(remaining, consumed, 0)
 		}
 	}

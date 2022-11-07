@@ -6,7 +6,7 @@ import scala.collection.immutable
 import global.*
 import graph.{ClosedGraph, GraphMap}
 import math.PiecewiseIntegrableTrajectory
-import queue.Heap
+import queue.{Heap, PriorityQueue}
 import time.Instant
 
 
@@ -22,7 +22,12 @@ class RequieredPowerCalculator(graph: ClosedGraph) {
 	trait StageProcessor {
 	}
 
-	def calcStateAtNextStep(currentState: GraphMap[StageState]): GraphMap[StageState] = {
+	def calcRequieredPowerAt(
+		stargingInstant: Instant,
+		stateAtStartingInstant: GraphMap[StageState],
+		endingInstant: Instant,
+		downstreamDemand: PriorityQueue
+	): GraphMap[StageState] = {
 		val graphMap = GraphMap.fill[Unit](graph)(stage => ())
 
 		???
