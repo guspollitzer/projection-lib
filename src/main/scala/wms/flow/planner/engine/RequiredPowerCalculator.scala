@@ -10,7 +10,7 @@ import queue.{Heap, PriorityQueue}
 import time.Instant
 
 
-class RequieredPowerCalculator(graph: ClosedGraph) {
+class RequiredPowerCalculator(graph: ClosedGraph) {
 
 	
 	def calc(forecast: PiecewiseIntegrableTrajectory[Heap]): RequiredPower = ???
@@ -22,8 +22,8 @@ class RequieredPowerCalculator(graph: ClosedGraph) {
 	trait StageProcessor {
 	}
 
-	def calcRequieredPowerAt(
-		stargingInstant: Instant,
+	def calcRequiredPowerAt(
+		startingInstant: Instant,
 		stateAtStartingInstant: GraphMap[StageState],
 		endingInstant: Instant,
 		downstreamDemand: PriorityQueue

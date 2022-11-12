@@ -12,7 +12,7 @@ object PiecewiseIntegrableTrajectory {
 		/** The instant at which this piece starts. Should be equal to previous piece `end`. */
 		def start: Instant
 
-		/** The instant at which this piece ends. Should be equal to next piece `start. */
+		/** The instant at which this piece ends. Should be equal to next piece `start` */
 		def end: Instant
 
 		/** Equivalent to {{{integral(this.start, this.end)}}} */

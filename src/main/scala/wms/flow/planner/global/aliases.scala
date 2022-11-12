@@ -3,4 +3,4 @@ package global
 
 type Quantity = Float
 
-type Category = time.Instant
+type Priority = time.Instant

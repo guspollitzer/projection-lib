@@ -10,19 +10,19 @@ object ClosedGraph {
 		val builder = new Builder()
 		body.apply(builder)
 
-		val incorrectlyWiredPorts = for
+		val incorrectlyTiedPorts = for
 			stage <- builder.stages
 			(portName, port) <- stage.ports
-			message <- port.incorreclyWiredMessage
+			message <- port.incorrectlyTiedMessage
 		yield s"${stage.name} - $portName: $message"
 
-		if incorrectlyWiredPorts.isEmpty
+		if incorrectlyTiedPorts.isEmpty
 		then Right(ClosedGraph(builder.stages.toIndexedSeq))
-		else Left(incorrectlyWiredPorts.toList)
+		else Left(incorrectlyTiedPorts.toList)
 	}
 
 	class Builder private[ClosedGraph]() {
-		val stages = ArrayBuffer[Stage]()
+		private[ClosedGraph] val stages = ArrayBuffer[Stage]()
 
 		def register(stage: Stage): Unit = {
 			assert(!stages.contains(stage))
