@@ -1,10 +1,12 @@
 package wms.flow.planner
 package graph
 
-import funclib.{Applicative, Validation}
 
-import scala.annotation.targetName
-import scala.collection.immutable
+import funclib.{Applicative, Validation}
+import queue.PriorityQueue
+
+import scala.annotation.{targetName, threadUnsafe}
+import scala.collection.MapView
 
 object Stage {
 	trait Port {
@@ -17,24 +19,24 @@ object Stage {
 			else None
 		}
 	}
-	trait InPort(val host: Stage) extends Port {
-		def from: OutPort
-		private[graph] def from_=(in: OutPort): Unit
+	trait InPort[A](val host: Stage) extends Port {
+		def from: OutPort[A]
+		private[graph] def from_=(in: OutPort[A]): Unit
 	}
-	trait OutPort(val host: Stage) extends Port {
-		def to: InPort
+	trait OutPort[A](val host: Stage) extends Port {
+		def to: InPort[A]
 	}
 }
 
-import Stage.*
+import wms.flow.planner.graph.Stage.*
 
 trait Stage { self =>
 
-	class In private[graph] extends InPort(self) {
-		private[graph] var _from: OutPort = _
+	class In[A] private[graph] extends InPort[A](self) {
+		private[graph] var _from: OutPort[A] = _
 
-		def from: OutPort = _from
-		private[graph] def from_=(out: OutPort): Unit = {
+		def from: OutPort[A] = _from
+		private[graph] def from_=(out: OutPort[A]): Unit = {
 			if _from == null
 			then _from = out
 			else isOvertied = true
@@ -44,15 +46,15 @@ trait Stage { self =>
 		override def isUntied: Boolean = _from == null
 	}
 
-	class Out private[graph] extends OutPort(self) {
-		private [graph] var _to: InPort = _
-		def to: InPort = _to
+	class Out[A] private[graph] extends OutPort[A](self) {
+		private [graph] var _to: InPort[A] = _
+		def to: InPort[A] = _to
 
 		var isOvertied: Boolean = false
 		override def isUntied: Boolean = _to == null
 
 		@targetName("tieTo")
-		infix def ~>[To](destination: InPort)(using builder: ClosedGraph.Builder): Unit = {
+		infix def ~>(destination: InPort[A])(using builder: ClosedGraph.Builder): Unit = {
 			if _to == null then {
 				_to = destination
 				destination.from = this
@@ -68,45 +70,58 @@ trait Stage { self =>
 	def ordinal: Int = _ordinal
 	private[graph] def ordinal_=(ord: Int): Unit = _ordinal = ord
 
-	def ports: Map[String, Port]
+	def outPorts: Map[String, Out[?]]
+
+	def inPorts: Map[String, In[?]]
+	def ports: Map[String, Port] = inPorts ++ outPorts
+
+	@threadUnsafe lazy val downstreamStages: Set[Stage] = outPorts.view.values.map(op => op.to.host).toSet
+
+	@threadUnsafe lazy val upstreamStages: Set[Stage] = inPorts.view.values.map(op => op.from.host).toSet
+	
 }
 
 class Source(val name: String)(using builder: ClosedGraph.Builder) extends Stage {
-	val out: Out = Out()
-	val ports: Map[String, Port] = Map("out" -> out)
+	val out: Out[PriorityQueue] = Out()
+	val inPorts: Map[String, In[?]] = Map.empty
+	val outPorts: Map[String, Out[?]] = Map("out" -> out)
 
 	builder.register(this)
 }
 
 class Sink(val name: String)(using builder: ClosedGraph.Builder) extends Stage {
-	val in: In = In()
-	val ports: Map[String, Port] = Map("in" -> in)
+	val in: In[PriorityQueue] = In()
+	val inPorts: Map[String, In[?]] = Map("in" -> in)
+	val outPorts: Map[String, Out[?]] = Map.empty
 
 	builder.register(this)
 }
 
-class Flow(val name: String)(using builder: ClosedGraph.Builder) extends Stage {
-	val in: In = In()
-	val out: Out = Out()
-	val ports: Map[String, Port] = Map("in" -> in, "out" -> out)
+class Flow[A, B](val name: String)(using builder: ClosedGraph.Builder) extends Stage {
+	val in: In[A] = In()
+	val out: Out[B] = Out()
+	val inPorts: Map[String, In[?]] = Map("in" -> in)
+	val outPorts: Map[String, Out[?]] = Map("out" -> out)
 
 	builder.register(this)
 }
 
-class Fork2(val name: String)(using builder: ClosedGraph.Builder) extends Stage {
-	val in: In = In()
-	val outA: Out = Out()
-	val outB: Out = Out()
-	val ports: Map[String, Port] = Map("in" -> in, "outA" -> outA, "outB" -> outB)
+class Fork2[A, B](val name: String)(using builder: ClosedGraph.Builder) extends Stage {
+	val in: In[A] = In()
+	val outA: Out[B] = Out()
+	val outB: Out[B] = Out()
+	val inPorts: Map[String, In[?]] = Map("in" -> in)
+	val outPorts: Map[String, Out[?]] = Map("outA" -> outA, "outB" -> outB)
 
 	builder.register(this)
 }
 
-class Join2(val name: String)(using builder: ClosedGraph.Builder) extends Stage {
-	val inA: In = In()
-	val inB: In = In()
-	val out: Out = Out()
-	val ports: Map[String, Port] = Map("inA" -> inA, "inB" -> inB, "out" -> out)
+class Join2[A, B](val name: String)(using builder: ClosedGraph.Builder) extends Stage {
+	val inA: In[A] = In()
+	val inB: In[A] = In()
+	val out: Out[B] = Out()
+	val inPorts: Map[String, In[?]] = Map("inA" -> inA, "inB" -> inB)
+	val outPorts: Map[String, Out[?]] = Map("out" -> out)
 
 	builder.register(this)
 }

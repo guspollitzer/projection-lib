@@ -3,6 +3,7 @@ package queue
 
 import global.{Category, Priority, Quantity}
 
+import scala.annotation.tailrec
 import scala.collection.immutable.TreeMap
 
 type PriorityQueue = TreeMap[Priority, Heap]
@@ -16,6 +17,7 @@ given QueueOps[PriorityQueue] with {
 			loop(quantityToConsume, TreeMap.empty)
 		}
 
+		@tailrec
 		private def loop(quantityToConsume: Quantity, alreadyConsumed: PriorityQueue): Consumption[PriorityQueue] = {
 			assert(quantityToConsume >= 0)
 			if quantityToConsume == 0 then {

@@ -1,13 +1,14 @@
 package wms.flow.planner
 package engine
 
-import scala.collection.immutable
-
 import global.*
-import graph.{ClosedGraph, GraphMap}
+import graph.{ClosedGraph, GraphMap, Stage}
 import math.PiecewiseIntegrableTrajectory
 import queue.{Heap, PriorityQueue}
 import time.Instant
+
+import scala.annotation.tailrec
+import scala.collection.immutable
 
 
 class RequiredPowerCalculator(graph: ClosedGraph) {
@@ -17,8 +18,7 @@ class RequiredPowerCalculator(graph: ClosedGraph) {
 
 	case class RequiredPower()
 
-	case class StageState()
-
+	case class StageState(pepe: Int)
 	trait StageProcessor {
 	}
 
@@ -28,7 +28,6 @@ class RequiredPowerCalculator(graph: ClosedGraph) {
 		endingInstant: Instant,
 		downstreamDemand: PriorityQueue
 	): GraphMap[StageState] = {
-		val graphMap = GraphMap.fill[Unit](graph)(stage => ())
 
 		???
 	}

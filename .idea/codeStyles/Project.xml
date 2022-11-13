@@ -29,10 +29,13 @@
       <option name="CODE_STYLE_DEFAULTS" value="KOTLIN_OFFICIAL" />
     </JetCodeStyleSettings>
     <ScalaCodeStyleSettings>
+      <option name="addFullQualifiedImports" value="false" />
+      <option name="sortAsScalastyle" value="true" />
       <option name="ALIGN_IF_ELSE" value="true" />
       <option name="INDENT_FIRST_PARAMETER" value="false" />
       <option name="INDENT_FIRST_PARAMETER_CLAUSE" value="true" />
       <option name="INDENT_BRACED_FUNCTION_ARGS" value="false" />
+      <option name="KEEP_ONE_LINE_LAMBDAS_IN_ARG_LIST" value="true" />
       <option name="CALL_PARAMETERS_NEW_LINE_AFTER_LPAREN" value="2" />
       <option name="MULTILINE_STRING_CLOSING_QUOTES_ON_NEW_LINE" value="true" />
     </ScalaCodeStyleSettings>
@@ -103,10 +106,17 @@
       </indentOptions>
     </codeStyleSettings>
     <codeStyleSettings language="Scala">
+      <option name="CALL_PARAMETERS_WRAP" value="5" />
       <option name="PREFER_PARAMETERS_WRAP" value="true" />
       <option name="CALL_PARAMETERS_RPAREN_ON_NEXT_LINE" value="true" />
+      <option name="METHOD_PARAMETERS_WRAP" value="5" />
       <option name="METHOD_PARAMETERS_LPAREN_ON_NEXT_LINE" value="true" />
       <option name="METHOD_PARAMETERS_RPAREN_ON_NEXT_LINE" value="true" />
+      <option name="METHOD_CALL_CHAIN_WRAP" value="5" />
+      <option name="WRAP_FIRST_METHOD_IN_CALL_CHAIN" value="true" />
+      <option name="KEEP_SIMPLE_BLOCKS_IN_ONE_LINE" value="true" />
+      <option name="KEEP_SIMPLE_METHODS_IN_ONE_LINE" value="true" />
+      <option name="FOR_STATEMENT_WRAP" value="5" />
       <indentOptions>
         <option name="INDENT_SIZE" value="4" />
         <option name="CONTINUATION_INDENT_SIZE" value="4" />

@@ -109,7 +109,7 @@
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "scala_project_settings_configurable.last_selected_tab_index": "0",
-    "settings.editor.selected.configurable": "org.jetbrains.plugins.scala.settings.ScalaProjectSettingsConfigurable"
+    "settings.editor.selected.configurable": "preferences.sourceCode.Scala"
   },
   "keyToStringList": {
     "GitStage.ChangesTree.GroupingKeys": [
@@ -152,8 +152,16 @@
       <option name="presentableId" value="Default" />
       <updated>1668280106182</updated>
       <workItem from="1668280109412" duration="372000" />
-      <workItem from="1668280749372" duration="4848000" />
+      <workItem from="1668280749372" duration="26889000" />
     </task>
+    <task id="LOCAL-00001" summary="Category from Priority to tuple of (Priority, Path) and all the consecuences.">
+      <created>1668291279923</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1668291279923</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
