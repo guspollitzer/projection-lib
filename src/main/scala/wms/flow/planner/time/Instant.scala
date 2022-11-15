@@ -15,11 +15,11 @@ object Instant {
 
 extension (a: Instant) {
 	@targetName("plus")
-	def +(b: Instant): Instant = a + b
+	def + (b: Instant): Instant = a + b
 	@targetName("minus")
-	def -(b: Instant): Instant = a - b
+	def - (b: Instant): Instant = a - b
 	@targetName("dividedBy")
-	def /(b: Instant): Float = a / b
+	def / (b: Instant): Float = a / b
 
 	@targetName("equalTo")
 	def ==(b: Instant): Boolean = a == b

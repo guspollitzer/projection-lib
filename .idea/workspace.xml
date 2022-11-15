@@ -31,19 +31,14 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d916dc4d-02ba-4767-bd3d-79a313427327" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/main/scala/global/Category.scala" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/scala/global/Path.scala" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/checkstyle-idea.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/checkstyle-idea.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/codeStyles/Project.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/codeStyles/Project.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/codeStyles/codeStyleConfig.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/codeStyles/codeStyleConfig.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/scala/global/aliases.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/global/aliases.scala" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/scala/queue/EmptyAble.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/queue/EmptyAble.scala" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/scala/queue/FifoQueue.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/queue/FifoQueue.scala" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/scala/queue/Heap.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/queue/Heap.scala" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/scala/queue/PriorityQueue.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/queue/PriorityQueue.scala" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/scala/queue/Queue.scala" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/scala/queue/QueueOps.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/queue/QueueOps.scala" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/engine/RequiredPowerCalculator.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/engine/RequiredPowerCalculator.scala" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/graph/ClosedGraph.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/graph/ClosedGraph.scala" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/graph/GraphMap.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/graph/GraphMap.scala" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/math/PiecewiseIntegrableTrajectory.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/math/PiecewiseIntegrableTrajectory.scala" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/math/StaggeredIntegrableTrajectory.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/math/StaggeredIntegrableTrajectory.scala" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/time/Instant.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/time/Instant.scala" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -97,28 +92,28 @@
     <option name="showModules" value="false" />
     <option name="showVisibilityIcons" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.go.format.on.save.advertiser.fired": "true",
-    "RunOnceActivity.go.formatter.settings.were.checked": "true",
-    "RunOnceActivity.go.migrated.go.modules.settings": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "go.import.settings.migrated": "true",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "scala_project_settings_configurable.last_selected_tab_index": "0",
-    "settings.editor.selected.configurable": "preferences.sourceCode.Scala"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.go.format.on.save.advertiser.fired&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.formatter.settings.were.checked&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.migrated.go.modules.settings&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;scala_project_settings_configurable.last_selected_tab_index&quot;: &quot;0&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;advanced.settings&quot;
   },
-  "keyToStringList": {
-    "GitStage.ChangesTree.GroupingKeys": [
-      "directory",
-      "module",
-      "repository"
+  &quot;keyToStringList&quot;: {
+    &quot;GitStage.ChangesTree.GroupingKeys&quot;: [
+      &quot;directory&quot;,
+      &quot;module&quot;,
+      &quot;repository&quot;
     ]
   }
-}]]></component>
+}</component>
   <component name="ScalaProjectSettings">
     <option name="compilerHighlightingScala2" value="true" />
     <option name="intInjectionMapping">
@@ -153,6 +148,8 @@
       <updated>1668280106182</updated>
       <workItem from="1668280109412" duration="372000" />
       <workItem from="1668280749372" duration="26889000" />
+      <workItem from="1668464238942" duration="13750000" />
+      <workItem from="1668478428056" duration="2491000" />
     </task>
     <task id="LOCAL-00001" summary="Category from Priority to tuple of (Priority, Path) and all the consecuences.">
       <created>1668291279923</created>
@@ -180,7 +177,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Category from Priority to tuple of (Priority, Path) and all the consecuences." />
-    <option name="LAST_COMMIT_MESSAGE" value="Category from Priority to tuple of (Priority, Path) and all the consecuences." />
+    <MESSAGE value="Implement StaggeredIntegrableTrajectory integration over more than one step." />
+    <option name="LAST_COMMIT_MESSAGE" value="Implement StaggeredIntegrableTrajectory integration over more than one step." />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>

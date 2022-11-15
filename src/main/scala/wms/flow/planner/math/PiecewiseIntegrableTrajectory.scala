@@ -31,4 +31,7 @@ trait PiecewiseIntegrableTrajectory[+A] {
 	import PiecewiseIntegrableTrajectory.*
 
 	def byPieceIndex: immutable.IndexedSeq[Piece[A]]
+//	def pieceIndexByStartingInstant: java.util.TreeMap[Instant, Int]
+
+	def integrate(from: Instant, to: Instant): A
 }

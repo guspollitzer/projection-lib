@@ -1,7 +1,8 @@
 package wms.flow.planner
 package queue
 
-import global.{Quantity, Category}
+import global.{Category, Quantity}
+import wms.flow.planner.math.Fractionable
 
 type Heap = Map[Category, Quantity]
 
@@ -13,8 +14,8 @@ extension (heap: Heap) {
 		} else {
 			val consumedFraction = quantityToConsume / quantityAvailable
 			val remainingFraction = quantityAvailable - consumedFraction
-			val remaining = heap.map((c, q) => c -> q * remainingFraction)
-			val consumed = heap.map((c, q) => c -> q * remainingFraction)
+			val remaining = heap.takeFraction(remainingFraction)
+			val consumed = heap.takeFraction(consumedFraction)
 			Consumption(remaining, consumed, 0)
 		}
 	}
@@ -23,5 +24,9 @@ extension (heap: Heap) {
 given EmptyAble[Heap] with {
 	extension (heap: Heap) def isEmpty = heap.isEmpty
 
+}
+
+given Fractionable[Heap] with {
+	extension (heap: Heap) def takeFraction(fraction: Float): Heap = heap.map((c, q) => c -> q * fraction)
 }
 

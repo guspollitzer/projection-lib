@@ -2,8 +2,9 @@ package wms.flow.planner
 package queue
 
 import global.{Category, Priority, Quantity}
+import math.Fractionable
 
-import scala.annotation.tailrec
+import scala.annotation.{tailrec, targetName}
 import scala.collection.immutable.TreeMap
 
 type PriorityQueue = TreeMap[Priority, Heap]
@@ -42,4 +43,15 @@ given QueueOps[PriorityQueue] with {
 
 given EmptyAble[PriorityQueue] with {
 	extension (c: PriorityQueue) def isEmpty = c.isEmpty
+}
+
+given Concatenable[PriorityQueue] with {
+	def empty: PriorityQueue = TreeMap.empty
+
+	extension (a: PriorityQueue) @targetName("concat") def ++(b: PriorityQueue) = a ++ b
+}
+
+given Fractionable[PriorityQueue] with {
+	extension (pq: PriorityQueue) def takeFraction(fraction: Float): PriorityQueue =
+		pq.map((priority, heap) => priority -> heap.takeFraction(fraction))
 }

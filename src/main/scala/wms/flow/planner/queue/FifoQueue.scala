@@ -3,14 +3,12 @@ package queue
 
 import global.Quantity
 import queue.Heap
+import wms.flow.planner.math.Fractionable
 
+import scala.annotation.targetName
 import scala.collection.immutable.Queue
 
 type FifoQueue = List[Heap]
-
-given EmptyAble[FifoQueue] with {
-	extension (c: FifoQueue) def isEmpty = c.isEmpty
-}
 
 given QueueOps[FifoQueue] with {
 	extension (queue: FifoQueue) {
@@ -39,4 +37,20 @@ given QueueOps[FifoQueue] with {
 			}
 		}
 	}
+}
+
+
+given EmptyAble[FifoQueue] with {
+	extension (c: FifoQueue) def isEmpty = c.isEmpty
+}
+
+given Concatenable[FifoQueue] with {
+	override def empty: FifoQueue = Nil
+
+	extension (a: FifoQueue) @targetName("concat") def ++(b: FifoQueue) = a ++ b
+}
+
+given Fractionable[FifoQueue] with {
+	extension (fq: FifoQueue) def takeFraction(fraction: Float): FifoQueue =
+		fq.map(_.takeFraction(fraction))
 }

@@ -1,6 +1,8 @@
 package wms.flow.planner
 package math
 
+/** Defines the algebra of fractionable things */
 trait Fractionable[A] {
-	extension (a: A) def fractionate(fraction: Float): A
+	/** Gets a fraction of the fractionable thing. */
+	extension (a: A) def takeFraction(fraction: Float): A
 }
