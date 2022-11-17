@@ -2,9 +2,9 @@ package wms.flow.planner
 package engine
 
 import global.*
-import graph.{ClosedGraph, GraphMap, Stage, Source, Sink, Flow, Fork2, Join2}
-import math.PiecewiseIntegrableTrajectory
-import queue.{Heap, PriorityQueue, FifoQueue}
+import graph.{ClosedGraph, Flow, Fork2, GraphMap, Join2, Sink, Source, Stage}
+import math.{Fractionable, PiecewiseIntegrableTrajectory, StaggeredIntegrableTrajectoryFactory, given}
+import queue.{FifoQueue, Heap, PriorityQueue, given}
 import time.*
 
 import scala.annotation.tailrec
@@ -22,20 +22,41 @@ object RequiredPowerCalculator {
 		startingInstant: Instant,
 		stateAtStartingInstant: GraphMap[StageState],
 		endingInstant: Instant,
-		sinksDownstreamDemandTrajectory: PiecewiseIntegrableTrajectory[PriorityQueue],
+		desiredBacklogAtEndingInstant: GraphMap[Duration],
 		sinkByPath: Map[Path, Sink],
-		desiredBacklogAtEndingInstant: GraphMap[Instant]
-
+		sinkDownstreamDemandTrajectoryFactory: StaggeredIntegrableTrajectoryFactory[PriorityQueue]
 	): GraphMap[StageState] = {
+
+
+		def calcSinkDownStreamDemand(from: Instant, to: Instant)(sink: Sink): PriorityQueue = {
+			val downstreamDemandTrajectory: PiecewiseIntegrableTrajectory[PriorityQueue] =
+				sinkDownstreamDemandTrajectoryFactory.buildStaggeredIntegrableTrajectory { wholeGraphDownstreamQueue =>
+					val sinkDownStreamQueue =
+						for (priority, heap) <- wholeGraphDownstreamQueue
+							yield {
+								val heapPortionAssignedToThisSink = heap.filter {
+									case (category, _) => sink == sinkByPath(category.path)
+								}
+								priority -> heapPortionAssignedToThisSink
+							}
+					sinkDownStreamQueue.filter { (_, h) => h.nonEmpty }
+				}
+			downstreamDemandTrajectory.integrate(from, to)
+		}
+
 
 		stateAtStartingInstant.calcUpward(
 			(stage: Stage, oldState: StageState, alreadyCalculated: Map[Stage, StageState]) => {
 
-				val desiredBacklogAtEndingInstantOfStage = desiredBacklogAtEndingInstant.get(stage)
-				val sinksDownstreamDemand: PriorityQueue =
-					sinksDownstreamDemandTrajectory.integrate(startingInstant, desiredBacklogAtEndingInstantOfStage)
+				val desiredBacklogDuration: Duration = desiredBacklogAtEndingInstant.get(stage)
 
-				val downstreamDemand = getDownstreamDemand(stage, stateAtStartingInstant, sinksDownstreamDemand, sinkByPath)
+				val downstreamDemand = getDownstreamDemand(
+					stage,
+					stateAtStartingInstant,
+					calcSinkDownStreamDemand(startingInstant, endingInstant),
+				)
+
+//				val desiredBacklogAtEndingInstant =
 
 				oldState
 			}
@@ -47,20 +68,11 @@ object RequiredPowerCalculator {
 	inline private def getDownstreamDemand(
 		stage: Stage,
 		stateAtStartingInstant: GraphMap[StageState],
-		sinksDownstreamDemand: PriorityQueue,
-		sinkByPath: Map[Path, Sink]
+		sinksDownstreamDemandCalculator: Sink => PriorityQueue
 	): Either[PriorityQueue, FifoQueue] = {
 		stage match {
 			case sink: Sink =>
-				val sinkDemand =
-					for (priority, heap) <- sinksDownstreamDemand
-						yield {
-							val heapPortionAssignedToThisSink = heap.filter {
-								case (category, _) => sink == sinkByPath(category.path)
-							}
-							priority -> heapPortionAssignedToThisSink
-						}
-				Left(sinkDemand.filter { (_, h) => h.nonEmpty })
+				Left(sinksDownstreamDemandCalculator(sink))
 
 			case flow: Flow[?, ?] =>
 				stateAtStartingInstant.get(flow.out.to.host).demand

@@ -31,11 +31,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d916dc4d-02ba-4767-bd3d-79a313427327" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/codeStyles/Project.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/codeStyles/Project.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/time/Duration.scala" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/engine/RequiredPowerCalculator.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/engine/RequiredPowerCalculator.scala" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/graph/ClosedGraph.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/graph/ClosedGraph.scala" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/graph/GraphMap.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/graph/GraphMap.scala" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/math/PiecewiseIntegrableTrajectory.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/math/PiecewiseIntegrableTrajectory.scala" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/math/StaggeredIntegrableTrajectory.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/math/StaggeredIntegrableTrajectory.scala" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/time/Instant.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/time/Instant.scala" afterDir="false" />
@@ -103,6 +101,7 @@
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
     &quot;scala_project_settings_configurable.last_selected_tab_index&quot;: &quot;0&quot;,
     &quot;settings.editor.selected.configurable&quot;: &quot;advanced.settings&quot;
   },
@@ -149,7 +148,9 @@
       <workItem from="1668280109412" duration="372000" />
       <workItem from="1668280749372" duration="26889000" />
       <workItem from="1668464238942" duration="13750000" />
-      <workItem from="1668478428056" duration="2491000" />
+      <workItem from="1668478428056" duration="9273000" />
+      <workItem from="1668511694075" duration="3625000" />
+      <workItem from="1668551031233" duration="16254000" />
     </task>
     <task id="LOCAL-00001" summary="Category from Priority to tuple of (Priority, Path) and all the consecuences.">
       <created>1668291279923</created>
@@ -158,7 +159,14 @@
       <option name="project" value="LOCAL" />
       <updated>1668291279923</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="Implement StaggeredIntegrableTrajectory integration over more than one step.">
+      <created>1668481708618</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1668481708618</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

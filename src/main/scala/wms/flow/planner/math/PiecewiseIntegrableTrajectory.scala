@@ -4,6 +4,7 @@ package math
 import scala.collection.immutable
 
 import time.Instant
+import queue.Concatenable
 
 object PiecewiseIntegrableTrajectory {
 	
@@ -30,8 +31,7 @@ object PiecewiseIntegrableTrajectory {
 trait PiecewiseIntegrableTrajectory[+A] {
 	import PiecewiseIntegrableTrajectory.*
 
-	def byPieceIndex: immutable.IndexedSeq[Piece[A]]
-//	def pieceIndexByStartingInstant: java.util.TreeMap[Instant, Int]
+	def getPieceAt(index: Int): Piece[A]
 
 	def integrate(from: Instant, to: Instant): A
 }
