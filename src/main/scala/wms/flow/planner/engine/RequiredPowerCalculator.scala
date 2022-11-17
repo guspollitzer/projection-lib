@@ -11,7 +11,11 @@ import scala.annotation.tailrec
 import scala.collection.immutable
 
 object RequiredPowerCalculator {
-	case class StageState(demand: Either[PriorityQueue, FifoQueue])
+
+	type Trajectory = Either[PiecewiseIntegrableTrajectory[PriorityQueue], PiecewiseIntegrableTrajectory[FifoQueue]]
+	case class StageState(
+		demandTrajectory: Trajectory
+	)
 
 	case class RequiredPower()
 
@@ -28,8 +32,7 @@ object RequiredPowerCalculator {
 	): GraphMap[StageState] = {
 
 
-		def calcSinkDownStreamDemand(from: Instant, to: Instant)(sink: Sink): PriorityQueue = {
-			val downstreamDemandTrajectory: PiecewiseIntegrableTrajectory[PriorityQueue] =
+		def downStreamDemandTrajectoryOf(sink: Sink): PiecewiseIntegrableTrajectory[PriorityQueue] = {
 				sinkDownstreamDemandTrajectoryFactory.buildStaggeredIntegrableTrajectory { wholeGraphDownstreamQueue =>
 					val sinkDownStreamQueue =
 						for (priority, heap) <- wholeGraphDownstreamQueue
@@ -41,7 +44,6 @@ object RequiredPowerCalculator {
 							}
 					sinkDownStreamQueue.filter { (_, h) => h.nonEmpty }
 				}
-			downstreamDemandTrajectory.integrate(from, to)
 		}
 
 
@@ -53,7 +55,7 @@ object RequiredPowerCalculator {
 				val downstreamDemand = getDownstreamDemand(
 					stage,
 					stateAtStartingInstant,
-					calcSinkDownStreamDemand(startingInstant, endingInstant),
+					downStreamDemandTrajectoryOf
 				)
 
 //				val desiredBacklogAtEndingInstant =
@@ -68,31 +70,32 @@ object RequiredPowerCalculator {
 	inline private def getDownstreamDemand(
 		stage: Stage,
 		stateAtStartingInstant: GraphMap[StageState],
-		sinksDownstreamDemandCalculator: Sink => PriorityQueue
-	): Either[PriorityQueue, FifoQueue] = {
+		sinksDownstreamDemandTrajectoryGetter: Sink => PiecewiseIntegrableTrajectory[PriorityQueue]
+	): Either[PiecewiseIntegrableTrajectory[PriorityQueue], PiecewiseIntegrableTrajectory[FifoQueue]] = {
 		stage match {
 			case sink: Sink =>
-				Left(sinksDownstreamDemandCalculator(sink))
+				Left(sinksDownstreamDemandTrajectoryGetter(sink))
+
+			case source: Source =>
+				stateAtStartingInstant.get(source.out.to.host).demandTrajectory
 
 			case flow: Flow[?, ?] =>
-				stateAtStartingInstant.get(flow.out.to.host).demand
+				stateAtStartingInstant.get(flow.out.to.host).demandTrajectory
 
 			case join2: Join2[?, ?] =>
-				stateAtStartingInstant.get(join2.out.to.host).demand
+				stateAtStartingInstant.get(join2.out.to.host).demandTrajectory
 
 			case fork2: Fork2[?, ?] =>
-				val outADemand = stateAtStartingInstant.get(fork2.outA.to.host).demand
-				val outBDemand = stateAtStartingInstant.get(fork2.outB.to.host).demand
-				(outADemand, outBDemand) match {
-					case (Right(a), Right(b)) => Right(a ++ b)
-					case (Left(a), Left(b)) => Left(a ++ b)
+				val outADemandTrajectory: Trajectory = stateAtStartingInstant.get(fork2.outA.to.host).demandTrajectory
+				val outBDemandTrajectory: Trajectory = stateAtStartingInstant.get(fork2.outB.to.host).demandTrajectory
+				(outADemandTrajectory, outBDemandTrajectory) match {
+					case (Right(a), Right(b)) => Right(a.combineWith(b))
+					case (Left(a), Left(b)) => Left(a.combineWith(b))
 					case _ => throw IllegalStateException(
-						s"stage=${stage.name}, outADemand=$outADemand, outBDemand=$outBDemand"
+						s"stage=${stage.name}, outADemand=$outADemandTrajectory, outBDemand=$outBDemandTrajectory"
 					)
 				}
 
-			case source: Source =>
-				stateAtStartingInstant.get(source.out.to.host).demand
 
 		}
 	}

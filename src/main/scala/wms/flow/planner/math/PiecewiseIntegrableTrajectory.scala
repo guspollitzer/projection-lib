@@ -2,9 +2,10 @@ package wms.flow.planner
 package math
 
 import scala.collection.immutable
-
 import time.Instant
 import queue.Concatenable
+
+import scala.annotation.targetName
 
 object PiecewiseIntegrableTrajectory {
 	
@@ -28,10 +29,14 @@ object PiecewiseIntegrableTrajectory {
 	
 }
 /** A piecewise trajectory of which we just need to know how to compute the definite integral on any interval.  */
-trait PiecewiseIntegrableTrajectory[+A] {
+trait PiecewiseIntegrableTrajectory[+A: Fractionable : Concatenable] {
 	import PiecewiseIntegrableTrajectory.*
 
 	def getPieceAt(index: Int): Piece[A]
 
 	def integrate(from: Instant, to: Instant): A
+
+	def combineWith[B: Fractionable : Concatenable, C: Fractionable : Concatenable](
+		other: PiecewiseIntegrableTrajectory[B]
+	)(f: (A, B) => C): PiecewiseIntegrableTrajectory[C]
 }

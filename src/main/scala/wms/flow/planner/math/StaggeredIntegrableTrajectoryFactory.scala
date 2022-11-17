@@ -8,6 +8,7 @@ import queue.Concatenable
 
 import scala.annotation.tailrec
 import scala.collection.immutable.TreeMap
+import scala.collection.IndexedSeqView
 
 object StaggeredIntegrableTrajectoryFactory {
 
@@ -24,28 +25,61 @@ object StaggeredIntegrableTrajectoryFactory {
 
 		override def wholeIntegral: B = f(step.wholeIntegral)
 	}
-
 }
 
-case class StaggeredIntegrableTrajectoryFactory[A](steps: IndexedSeq[Step[A]]) {
+/**
+  * @param steps the steps on which the trajectories built by this instance are based.
+  *
+  * @param stepIndexByStartingInstant Maps steps starting instant to the index of the step in the [[steps]]
+  * [[IndexedSeq]]. This map is constructed using the [[java.util.TreeMap]]s
+  * constructor that takes a [[java.util.SortedMap]] in order the tree is balanced.
+  * */
+class StaggeredIntegrableTrajectoryFactory[A] private(
+	steps: IndexedSeqView[Step[A]],
+	stepIndexByStartingInstant: java.util.NavigableMap[Instant, Int]
+) {
+	selfFactory =>
 
 	import StaggeredIntegrableTrajectoryFactory.*
 
-	/** Maps steps starting instant to the index of the step in the [[steps]] [[IndexedSeq]].
-	  * Implementation note: The map is constructed using the [[java.util.TreeMap]]s constructor that takes a
-	  * [[java.util.SortedMap]] in order the tree is balanced. */
-	private val stepIndexByStartingInstant: java.util.NavigableMap[Instant, Int] = {
-		val tempSortedMap: java.util.SortedMap[Instant, Int] = new java.util.TreeMap()
-		for index <- steps.indices
-			do tempSortedMap.put(this.steps(index).start, index)
-		new java.util.TreeMap(tempSortedMap)
-	}
+	def this(steps: IndexedSeqView[Step[A]]) =
+		this(
+		steps,
+		{
+			val tempSortedMap: java.util.SortedMap[Instant, Int] = new java.util.TreeMap()
+			for index <- steps.indices
+				do tempSortedMap.put(steps(index).start, index)
+			new java.util.TreeMap(tempSortedMap)
+		}
+		)
+
+	def map[B](f: A => B): StaggeredIntegrableTrajectoryFactory[B] =
+		new StaggeredIntegrableTrajectoryFactory[B](
+			steps.view.map(step => Step(step.start, step.end, f(step.wholeIntegral))),
+			stepIndexByStartingInstant
+		)
 
 	def buildStaggeredIntegrableTrajectory[B: Fractionable](f: A => B)
-		(using concatenableOpsForA: Concatenable[B]): PiecewiseIntegrableTrajectory[B] = StaggeredIntegrableTrajectory(f)
+		(using concatenableOpsForA: Concatenable[B]): StaggeredIntegrableTrajectory[B] = new StaggeredIntegrableTrajectory(
+		f
+	)
 
-	private case class StaggeredIntegrableTrajectory[B: Fractionable](f: A => B)(using concatenationOpsForB: Concatenable[B])
+	object StaggeredIntegrableTrajectory {
+
+		def combine[B: Fractionable : Concatenable, C: Fractionable : Concatenable, D: Fractionable : Concatenable](
+			sitB: StaggeredIntegrableTrajectory[B],
+			sitC: StaggeredIntegrableTrajectory[C]
+		)(f: (B, C) => D): StaggeredIntegrableTrajectory[D] = {
+			selfFactory.buildStaggeredIntegrableTrajectory[D](a => f(sitB.f(a), sitC.f(a)))
+		}
+	}
+
+	class StaggeredIntegrableTrajectory[B: Fractionable](val f: A => B)(using concatenationOpsForB: Concatenable[B])
 		extends PiecewiseIntegrableTrajectory[B] {
+		selfTrajectory =>
+
+		def factory= selfFactory
+
 		override def getPieceAt(index: Int): Piece[B] = new PieceImpl[A, B](steps(index))(f)
 
 		override def integrate(from: Instant, to: Instant): B = {
@@ -79,6 +113,14 @@ case class StaggeredIntegrableTrajectoryFactory[A](steps: IndexedSeq[Step[A]]) {
 				else firstInvolvedStepEntry.getValue
 			loop(firstInvolvedStepIndex, from, concatenationOpsForB.empty)
 		}
+
+//		override def combineWith[C: Fractionable : Concatenable, D: Fractionable : Concatenable](other: StaggeredIntegrableTrajectory[C])(f: (B, C) => D): PiecewiseIntegrableTrajectory[D] =
+//			StaggeredIntegrableTrajectory.combine(this, other)(f)
+
+		override def combineWith[C: Fractionable : Concatenable, D: Fractionable : Concatenable](
+			other: PiecewiseIntegrableTrajectory[C]
+		)(f: (B, C) => D): PiecewiseIntegrableTrajectory[D] = StaggeredIntegrableTrajectory.combine(this, other)(f)
+
 	}
 
 }
