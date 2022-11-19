@@ -3,28 +3,16 @@ package math
 
 import time.*
 import PiecewiseTrajectoryAlgebra.Piece
-import StaggeredTrajectoryFactory.Step
+import StaggeredTrajectoryAlgebra.Step
 import queue.Concatenable
 
 import scala.annotation.tailrec
 import scala.collection.immutable.TreeMap
 import scala.collection.IndexedSeqView
 
-object StaggeredTrajectoryFactory {
+object StaggeredTrajectoryAlgebra {
 
-	case class Step[A](start: Instant, end: Instant, wholeIntegral: A)
-
-	case class PieceImpl[A, B: Fractionable](step: Step[A])(f: A => B) extends Piece[B] {
-		override def integral(from: Instant, to: Instant): B =
-			assert(from >= start && to <= end)
-			f(step.wholeIntegral).takeFraction((to - from) / (end - start))
-
-		override def start: Instant = step.start
-
-		override def end: Instant = step.end
-
-		override def wholeIntegral: B = f(step.wholeIntegral)
-	}
+	case class Step[+A](start: Instant, end: Instant, wholeIntegral: A) extends Piece[A]
 }
 
 /**
@@ -34,15 +22,13 @@ object StaggeredTrajectoryFactory {
   * [[IndexedSeq]]. This map is constructed using the [[java.util.TreeMap]]s
   * constructor that takes a [[java.util.SortedMap]] in order the tree is balanced.
   * */
-class StaggeredTrajectoryFactory[A] private(
+class StaggeredTrajectoryAlgebra[+A] private(
 	steps: IndexedSeqView[Step[A]],
 	stepIndexByStartingInstant: java.util.NavigableMap[Instant, Int]
 ) extends PiecewiseTrajectoryAlgebra[A] {
 	selfFactory =>
 
-	import StaggeredTrajectoryFactory.*
-
-	type PT[+B] = StaggeredTrajectory[B]
+	import StaggeredTrajectoryAlgebra.*
 
 	def this(steps: IndexedSeqView[Step[A]]) =
 		this(
@@ -55,27 +41,43 @@ class StaggeredTrajectoryFactory[A] private(
 		}
 		)
 
-	def map[B](f: A => B): StaggeredTrajectoryFactory[B] =
-		new StaggeredTrajectoryFactory[B](
+	case class StepView[+B: Fractionable](stepIndex: Int)(wholeIntegralByStepIndex: Int => B) extends Piece[B] {
+
+		override def start: Instant = steps(stepIndex).start
+
+		override def end: Instant = steps(stepIndex).end
+
+		override def wholeIntegral: B = wholeIntegralByStepIndex(stepIndex)
+	}
+
+	type P[+B] = StepView[B]
+	type T[+B] = StaggeredTrajectory[B]
+
+	override def getPieceAt(index: Int): Step[A] = steps(index)
+
+	override def map[B](f:A => B): StaggeredTrajectoryAlgebra[B] =
+		new StaggeredTrajectoryAlgebra[B](
 			steps.view.map(step => Step(step.start, step.end, f(step.wholeIntegral))),
 			stepIndexByStartingInstant
 		)
 
-	def buildTrajectory[B: Fractionable : Concatenable](f: A => B): PT[B] =
-		new StaggeredTrajectory(f)
+	override def buildTrajectory[B: Fractionable : Concatenable](wholeIntegralByStepIndex: Int => B): T[B] =
+		new StaggeredTrajectory(wholeIntegralByStepIndex)
 
 	import math.PiecewiseTrajectoryAlgebra
 
 	override def combine[B: Fractionable : Concatenable, C: Fractionable : Concatenable, D: Fractionable : Concatenable](
-		ptA: PT[B],
-		ptB: PT[C]
-	)(f: (B, C) => D): PT[D] = selfFactory.buildTrajectory[D](a => f(ptA.f(a), ptB.f(a)))
+		ptA: T[B],
+		ptB: T[C]
+	)(f: (B, C) => D): T[D] = selfFactory.buildTrajectory[D](stepIndex => f(ptA.wholeIntegralByStepIndex(stepIndex), ptB.wholeIntegralByStepIndex(stepIndex)))
 
-	class StaggeredTrajectory[+B: Fractionable](val f: A => B)(using concatenationOpsForB: Concatenable[B])
+	class StaggeredTrajectory[+B: Fractionable](val wholeIntegralByStepIndex: Int => B)(using concatenationOpsForB: Concatenable[B])
 		extends PiecewiseTrajectory[B] {
 		selfTrajectory =>
 
-		override def getPieceAt(index: Int): Piece[B] = new PieceImpl[A, B](steps(index))(f)
+		override def getPieceAt(index: Int): StepView[B] = {
+			StepView[B](index)(wholeIntegralByStepIndex)
+		}
 
 		override def integrate(from: Instant, to: Instant): B = {
 			assert(from <= to)
@@ -86,7 +88,7 @@ class StaggeredTrajectoryFactory[A] private(
 					s"The trajectory is not defined in some part of the interval: from:$from, to:$to, byPieceIndex:$steps"
 				)
 				val step = steps(stepIndex)
-				val pieceWholeIntegral: B = f(step.wholeIntegral)
+				val pieceWholeIntegral: B = wholeIntegralByStepIndex(stepIndex)
 				if to <= step.end
 				then {
 					val stepIntegral = pieceWholeIntegral.takeFraction((to - fragmentStart) / (step.end - step
@@ -110,9 +112,7 @@ class StaggeredTrajectoryFactory[A] private(
 				else firstInvolvedStepEntry.getValue
 			loop(firstInvolvedStepIndex, from, concatenationOpsForB.empty)
 		}
-
-//		override def combineWith[C: Fractionable : Concatenable, D: Fractionable : Concatenable](other: StaggeredTrajectory[C])
-//			(f: (B, C) => D): PiecewiseTrajectory[D] = combine(this, other)(f)
-
 	}
+
+
 }

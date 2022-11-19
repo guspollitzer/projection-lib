@@ -9,12 +9,16 @@ import scala.collection.mutable.ReusableBuilder
 opaque type Instant = Float
 
 object Instant {
-	given Ordering[Instant] = Ordering.Float.TotalOrdering
+	given ordering: Ordering[Instant] = Ordering.Float.TotalOrdering
 	def mapBuilder[T]: mutable.Builder[(Instant, T), Map[Instant, T]] = SortedMap.newBuilder
+
+	def of(float: Float): Instant = float
+
+	given Conversion[Float, Instant] = identity
 }
 
 extension (a: Instant) {
-	
+
 	@targetName("plus")
 	def +(b: Duration): Instant = a + b
 	@targetName("minus")

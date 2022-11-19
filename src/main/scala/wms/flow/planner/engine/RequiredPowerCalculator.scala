@@ -3,7 +3,7 @@ package engine
 
 import global.*
 import graph.{ClosedGraph, Flow, Fork2, GraphMap, Join2, Sink, Source, Stage}
-import math.{Fractionable, PiecewiseTrajectoryAlgebra, StaggeredTrajectoryFactory, given}
+import math.{Fractionable, PiecewiseTrajectoryAlgebra, StaggeredTrajectoryAlgebra, given}
 import queue.{FifoQueue, Heap, PriorityQueue, given}
 import time.*
 
@@ -12,8 +12,11 @@ import scala.collection.immutable
 
 class RequiredPowerCalculator(val sinkDownstreamDemandTrajectoryAlgebra: PiecewiseTrajectoryAlgebra[PriorityQueue]) {
 
-	type PiecewiseTrajectory[Q] = sinkDownstreamDemandTrajectoryAlgebra.PT[Q]
+	type PiecewiseTrajectory[Q] = sinkDownstreamDemandTrajectoryAlgebra.T[Q]
 	type QueueTrajectory = Either[PiecewiseTrajectory[PriorityQueue], PiecewiseTrajectory[FifoQueue]]
+
+	def buildSinkDemandQueueTrajectory(f: PriorityQueue => PriorityQueue): QueueTrajectory =
+		Left(sinkDownstreamDemandTrajectoryAlgebra.buildTrajectory(stepIndex => f(sinkDownstreamDemandTrajectoryAlgebra.getPieceAt(stepIndex).wholeIntegral)))
 
 	case class StageState(
 		demandTrajectory: QueueTrajectory
@@ -47,8 +50,8 @@ class RequiredPowerCalculator(val sinkDownstreamDemandTrajectoryAlgebra: Piecewi
 	): GraphMap[StageState] = {
 
 		def downStreamDemandTrajectoryOf(sink: Sink): PiecewiseTrajectory[PriorityQueue] = {
-			sinkDownstreamDemandTrajectoryAlgebra.buildTrajectory { wholeGraphDownstreamQueue =>
-				wholeGraphDownstreamQueue.filteredBySink(sink, sinkByPath)
+			sinkDownstreamDemandTrajectoryAlgebra.buildTrajectory { stepIndex =>
+				sinkDownstreamDemandTrajectoryAlgebra.getPieceAt(stepIndex).wholeIntegral.filteredBySink(sink, sinkByPath)
 			}
 		}
 

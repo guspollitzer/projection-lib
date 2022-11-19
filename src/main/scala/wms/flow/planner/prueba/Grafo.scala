@@ -1,14 +1,23 @@
 package wms.flow.planner
 package prueba
 
+import engine.RequiredPowerCalculator
 import graph.*
-import queue.{PriorityQueue, FifoQueue}
+import math.*
+import queue.{FifoQueue, PriorityQueue, Heap}
+import StaggeredTrajectoryAlgebra.*
+import time.*
+import time.Instant.{*, given}
+import global.*
+
+import scala.collection.immutable.TreeMap
+import scala.language.implicitConversions
 
 object Grafo {
 
 	def main(args: Array[String]): Unit = {
 
-		val result = ClosedGraph.build(
+		val eClosedGraph = ClosedGraph.build(
 			builder => {
 				given ClosedGraph.Builder = builder
 
@@ -26,7 +35,35 @@ object Grafo {
 			}
 		)
 
-		println(result)
+		println(eClosedGraph)
+		
+		val x = IndexedSeq(1,2,3)
+		val y = x.apply(2)
 
+//		eClosedGraph.map {
+//			closedGraph =>
+//
+//				val steps = IndexedSeq(Step(1f, 2f, TreeMap.empty[Priority, Heap](Instant.ordering)))
+//				val sinkDownstreamDemandAlgebra = new StaggeredTrajectoryAlgebra(steps.view)
+//				val rpc = new RequiredPowerCalculator(sinkDownstreamDemandAlgebra)
+//				val stateAtStartingInstant: GraphMap[rpc.StageState] = GraphMap
+//					.fill[rpc.StageState](closedGraph)(stage => stage.name match {
+//						case "flow" | "join" =>
+//							val pt = 
+//							rpc.buildSinkDemandQueueTrajectory(
+//						case _ => rpc.StageState(Left(TreeMap.empty))
+//					}
+//					)
+//
+//				val desiredBacklogAtEndingInstant: GraphMap[Duration] = GraphMap.fill(closedGraph)(stage => ??? )
+//				
+//				rpc.calcRequiredPowerAt(
+//					0f,
+//					stateAtStartingInstant,
+//					3f,
+//					desiredBacklogAtEndingInstant,
+//					Map(Path.A -> closedGraph.getSinks(0))
+//				)
+//		}
 	}
 }

@@ -19,12 +19,12 @@ object PiecewiseTrajectoryAlgebra {
 
 		/** Equivalent to {{{integral(this.start, this.end)}}} */
 		def wholeIntegral: A
-
-		/** Calculates the definite integral of upstream.
-		 * @param from should be >= than [[#start]].
-		 * @param to should be <= than [[#end]].
-		 */
-		def integral(from: Instant, to: Instant): A
+//
+//		/** Calculates the definite integral of upstream.
+//		 * @param from should be >= than [[#start]].
+//		 * @param to should be <= than [[#end]].
+//		 */
+//		def integral(from: Instant, to: Instant): A
 	}
 	
 }
@@ -32,23 +32,29 @@ object PiecewiseTrajectoryAlgebra {
 trait PiecewiseTrajectoryAlgebra[+A] {
 	import PiecewiseTrajectoryAlgebra.*
 
-	type PT[+B] <: PiecewiseTrajectory[B]
+	type P[+B] <: Piece[B]
+	type T[+B] <: PiecewiseTrajectory[B]
 
-	def buildTrajectory[B: Fractionable : Concatenable](f: A => B): PT[B]
+	def getPieceAt(index: Int): Piece[A]
+
+	def map[B](f: A => B): PiecewiseTrajectoryAlgebra[B]
+
+	def buildTrajectory[B: Fractionable : Concatenable](f: Int => B): T[B]
+
 	def combine[B: Fractionable : Concatenable, C: Fractionable : Concatenable, D: Fractionable : Concatenable](
-		ptA: PT[B],
-		ptB: PT[C]
-	)(f: (B, C) => D): PT[D]
+		ptA: T[B],
+		ptB: T[C]
+	)(f: (B, C) => D): T[D]
 
 	/** A piecewise trajectory of which we just need to know how to compute the definite integral on any interval. */
 	trait PiecewiseTrajectory[+B: Fractionable : Concatenable] {
-		self: PT[B] =>
+		self: T[B] =>
 
-		def getPieceAt(index: Int): Piece[B]
+		def getPieceAt(index: Int): P[B]
 
 		def integrate(from: Instant, to: Instant): B
 
-		def combineWith[C: Fractionable : Concatenable, D: Fractionable : Concatenable](other: PT[C])(f: (B, C) => D): PT[D] =
+		def combineWith[C: Fractionable : Concatenable, D: Fractionable : Concatenable](other: T[C])(f: (B, C) => D): T[D] =
 			combine[B, C, D](self, other)(f)
 	}
 }
