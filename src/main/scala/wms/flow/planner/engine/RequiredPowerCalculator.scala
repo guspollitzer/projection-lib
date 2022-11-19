@@ -3,47 +3,53 @@ package engine
 
 import global.*
 import graph.{ClosedGraph, Flow, Fork2, GraphMap, Join2, Sink, Source, Stage}
-import math.{Fractionable, PiecewiseIntegrableTrajectory, StaggeredIntegrableTrajectoryFactory, given}
+import math.{Fractionable, PiecewiseTrajectoryAlgebra, StaggeredTrajectoryFactory, given}
 import queue.{FifoQueue, Heap, PriorityQueue, given}
 import time.*
 
 import scala.annotation.tailrec
 import scala.collection.immutable
 
-object RequiredPowerCalculator {
+class RequiredPowerCalculator(val sinkDownstreamDemandTrajectoryAlgebra: PiecewiseTrajectoryAlgebra[PriorityQueue]) {
 
-	type Trajectory = Either[PiecewiseIntegrableTrajectory[PriorityQueue], PiecewiseIntegrableTrajectory[FifoQueue]]
+	type PiecewiseTrajectory[Q] = sinkDownstreamDemandTrajectoryAlgebra.PT[Q]
+	type QueueTrajectory = Either[PiecewiseTrajectory[PriorityQueue], PiecewiseTrajectory[FifoQueue]]
+
 	case class StageState(
-		demandTrajectory: Trajectory
+		demandTrajectory: QueueTrajectory
 	)
 
 	case class RequiredPower()
 
-	def calc(forecast: PiecewiseIntegrableTrajectory[Heap]): RequiredPower = ???
+	def calc(forecast: PiecewiseTrajectory[Heap]): RequiredPower = ???
 
+
+	extension (queue: PriorityQueue) {
+		def filteredBySink(sink: Sink, sinkByPath: Map[Path, Sink]): PriorityQueue = {
+			val sinkDownStreamQueue =
+				for (priority, heap) <- queue
+					yield {
+						val heapPortionAssignedToThisSink = heap.filter {
+							case (category, _) => sink == sinkByPath(category.path)
+						}
+						priority -> heapPortionAssignedToThisSink
+					}
+			sinkDownStreamQueue.filter { (_, h) => h.nonEmpty }
+		}
+	}
 
 	def calcRequiredPowerAt(
 		startingInstant: Instant,
 		stateAtStartingInstant: GraphMap[StageState],
 		endingInstant: Instant,
 		desiredBacklogAtEndingInstant: GraphMap[Duration],
-		sinkByPath: Map[Path, Sink],
-		sinkDownstreamDemandTrajectoryFactory: StaggeredIntegrableTrajectoryFactory[PriorityQueue]
+		sinkByPath: Map[Path, Sink]
 	): GraphMap[StageState] = {
 
-
-		def downStreamDemandTrajectoryOf(sink: Sink): PiecewiseIntegrableTrajectory[PriorityQueue] = {
-				sinkDownstreamDemandTrajectoryFactory.buildStaggeredIntegrableTrajectory { wholeGraphDownstreamQueue =>
-					val sinkDownStreamQueue =
-						for (priority, heap) <- wholeGraphDownstreamQueue
-							yield {
-								val heapPortionAssignedToThisSink = heap.filter {
-									case (category, _) => sink == sinkByPath(category.path)
-								}
-								priority -> heapPortionAssignedToThisSink
-							}
-					sinkDownStreamQueue.filter { (_, h) => h.nonEmpty }
-				}
+		def downStreamDemandTrajectoryOf(sink: Sink): PiecewiseTrajectory[PriorityQueue] = {
+			sinkDownstreamDemandTrajectoryAlgebra.buildTrajectory { wholeGraphDownstreamQueue =>
+				wholeGraphDownstreamQueue.filteredBySink(sink, sinkByPath)
+			}
 		}
 
 
@@ -58,7 +64,7 @@ object RequiredPowerCalculator {
 					downStreamDemandTrajectoryOf
 				)
 
-//				val desiredBacklogAtEndingInstant =
+				//				val desiredBacklogAtEndingInstant =
 
 				oldState
 			}
@@ -70,8 +76,8 @@ object RequiredPowerCalculator {
 	inline private def getDownstreamDemand(
 		stage: Stage,
 		stateAtStartingInstant: GraphMap[StageState],
-		sinksDownstreamDemandTrajectoryGetter: Sink => PiecewiseIntegrableTrajectory[PriorityQueue]
-	): Either[PiecewiseIntegrableTrajectory[PriorityQueue], PiecewiseIntegrableTrajectory[FifoQueue]] = {
+		sinksDownstreamDemandTrajectoryGetter: Sink => PiecewiseTrajectory[PriorityQueue]
+	): QueueTrajectory = {
 		stage match {
 			case sink: Sink =>
 				Left(sinksDownstreamDemandTrajectoryGetter(sink))
@@ -86,17 +92,15 @@ object RequiredPowerCalculator {
 				stateAtStartingInstant.get(join2.out.to.host).demandTrajectory
 
 			case fork2: Fork2[?, ?] =>
-				val outADemandTrajectory: Trajectory = stateAtStartingInstant.get(fork2.outA.to.host).demandTrajectory
-				val outBDemandTrajectory: Trajectory = stateAtStartingInstant.get(fork2.outB.to.host).demandTrajectory
+				val outADemandTrajectory: QueueTrajectory = stateAtStartingInstant.get(fork2.outA.to.host).demandTrajectory
+				val outBDemandTrajectory: QueueTrajectory = stateAtStartingInstant.get(fork2.outB.to.host).demandTrajectory
 				(outADemandTrajectory, outBDemandTrajectory) match {
-					case (Right(a), Right(b)) => Right(a.combineWith(b))
-					case (Left(a), Left(b)) => Left(a.combineWith(b))
+					case (Right(a), Right(b)) => Right(sinkDownstreamDemandTrajectoryAlgebra.combine[FifoQueue, FifoQueue, FifoQueue](a, b)(_ ++ _))
+					case (Left(a), Left(b)) => Left(a.combineWith(b)(_ ++ _))
 					case _ => throw IllegalStateException(
 						s"stage=${stage.name}, outADemand=$outADemandTrajectory, outBDemand=$outBDemandTrajectory"
 					)
 				}
-
-
 		}
 	}
 

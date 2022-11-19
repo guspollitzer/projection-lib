@@ -31,12 +31,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d916dc4d-02ba-4767-bd3d-79a313427327" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/time/Duration.scala" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/engine/RequiredPowerCalculator.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/engine/RequiredPowerCalculator.scala" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/math/PiecewiseIntegrableTrajectory.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/math/PiecewiseIntegrableTrajectory.scala" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/math/StaggeredIntegrableTrajectory.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/math/StaggeredIntegrableTrajectory.scala" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/time/Instant.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/time/Instant.scala" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -72,6 +67,11 @@
     </system>
   </component>
   <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="main" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="GoLibraries">
@@ -152,6 +152,7 @@
       <workItem from="1668511694075" duration="3625000" />
       <workItem from="1668551031233" duration="17742000" />
       <workItem from="1668570433207" duration="16732000" />
+      <workItem from="1668658024932" duration="15503000" />
     </task>
     <task id="LOCAL-00001" summary="Category from Priority to tuple of (Priority, Path) and all the consecuences.">
       <created>1668291279923</created>
@@ -167,7 +168,14 @@
       <option name="project" value="LOCAL" />
       <updated>1668481708618</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="wip">
+      <created>1668657697918</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1668657697918</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -187,7 +195,9 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Category from Priority to tuple of (Priority, Path) and all the consecuences." />
     <MESSAGE value="Implement StaggeredIntegrableTrajectory integration over more than one step." />
-    <option name="LAST_COMMIT_MESSAGE" value="Implement StaggeredIntegrableTrajectory integration over more than one step." />
+    <MESSAGE value="wip" />
+    <MESSAGE value="compiles hiding trajectory implementation" />
+    <option name="LAST_COMMIT_MESSAGE" value="compiles hiding trajectory implementation" />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>

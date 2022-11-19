@@ -2,15 +2,15 @@ package wms.flow.planner
 package math
 
 import time.*
-import PiecewiseIntegrableTrajectory.Piece
-import StaggeredIntegrableTrajectoryFactory.Step
+import PiecewiseTrajectoryAlgebra.Piece
+import StaggeredTrajectoryFactory.Step
 import queue.Concatenable
 
 import scala.annotation.tailrec
 import scala.collection.immutable.TreeMap
 import scala.collection.IndexedSeqView
 
-object StaggeredIntegrableTrajectoryFactory {
+object StaggeredTrajectoryFactory {
 
 	case class Step[A](start: Instant, end: Instant, wholeIntegral: A)
 
@@ -34,13 +34,15 @@ object StaggeredIntegrableTrajectoryFactory {
   * [[IndexedSeq]]. This map is constructed using the [[java.util.TreeMap]]s
   * constructor that takes a [[java.util.SortedMap]] in order the tree is balanced.
   * */
-class StaggeredIntegrableTrajectoryFactory[A] private(
+class StaggeredTrajectoryFactory[A] private(
 	steps: IndexedSeqView[Step[A]],
 	stepIndexByStartingInstant: java.util.NavigableMap[Instant, Int]
-) {
+) extends PiecewiseTrajectoryAlgebra[A] {
 	selfFactory =>
 
-	import StaggeredIntegrableTrajectoryFactory.*
+	import StaggeredTrajectoryFactory.*
+
+	type PT[+B] = StaggeredTrajectory[B]
 
 	def this(steps: IndexedSeqView[Step[A]]) =
 		this(
@@ -53,32 +55,25 @@ class StaggeredIntegrableTrajectoryFactory[A] private(
 		}
 		)
 
-	def map[B](f: A => B): StaggeredIntegrableTrajectoryFactory[B] =
-		new StaggeredIntegrableTrajectoryFactory[B](
+	def map[B](f: A => B): StaggeredTrajectoryFactory[B] =
+		new StaggeredTrajectoryFactory[B](
 			steps.view.map(step => Step(step.start, step.end, f(step.wholeIntegral))),
 			stepIndexByStartingInstant
 		)
 
-	def buildStaggeredIntegrableTrajectory[B: Fractionable](f: A => B)
-		(using concatenableOpsForA: Concatenable[B]): StaggeredIntegrableTrajectory[B] = new StaggeredIntegrableTrajectory(
-		f
-	)
+	def buildTrajectory[B: Fractionable : Concatenable](f: A => B): PT[B] =
+		new StaggeredTrajectory(f)
 
-	object StaggeredIntegrableTrajectory {
+	import math.PiecewiseTrajectoryAlgebra
 
-		def combine[B: Fractionable : Concatenable, C: Fractionable : Concatenable, D: Fractionable : Concatenable](
-			sitB: StaggeredIntegrableTrajectory[B],
-			sitC: StaggeredIntegrableTrajectory[C]
-		)(f: (B, C) => D): StaggeredIntegrableTrajectory[D] = {
-			selfFactory.buildStaggeredIntegrableTrajectory[D](a => f(sitB.f(a), sitC.f(a)))
-		}
-	}
+	override def combine[B: Fractionable : Concatenable, C: Fractionable : Concatenable, D: Fractionable : Concatenable](
+		ptA: PT[B],
+		ptB: PT[C]
+	)(f: (B, C) => D): PT[D] = selfFactory.buildTrajectory[D](a => f(ptA.f(a), ptB.f(a)))
 
-	class StaggeredIntegrableTrajectory[B: Fractionable](val f: A => B)(using concatenationOpsForB: Concatenable[B])
-		extends PiecewiseIntegrableTrajectory[B] {
+	class StaggeredTrajectory[+B: Fractionable](val f: A => B)(using concatenationOpsForB: Concatenable[B])
+		extends PiecewiseTrajectory[B] {
 		selfTrajectory =>
-
-		def factory= selfFactory
 
 		override def getPieceAt(index: Int): Piece[B] = new PieceImpl[A, B](steps(index))(f)
 
@@ -94,7 +89,9 @@ class StaggeredIntegrableTrajectoryFactory[A] private(
 				val pieceWholeIntegral: B = f(step.wholeIntegral)
 				if to <= step.end
 				then {
-					val stepIntegral = pieceWholeIntegral.takeFraction((to - fragmentStart) / (step.end - step.start))
+					val stepIntegral = pieceWholeIntegral.takeFraction((to - fragmentStart) / (step.end - step
+						.start)
+					)
 					accum ++ stepIntegral
 				}
 				else {
@@ -114,13 +111,8 @@ class StaggeredIntegrableTrajectoryFactory[A] private(
 			loop(firstInvolvedStepIndex, from, concatenationOpsForB.empty)
 		}
 
-//		override def combineWith[C: Fractionable : Concatenable, D: Fractionable : Concatenable](other: StaggeredIntegrableTrajectory[C])(f: (B, C) => D): PiecewiseIntegrableTrajectory[D] =
-//			StaggeredIntegrableTrajectory.combine(this, other)(f)
-
-		override def combineWith[C: Fractionable : Concatenable, D: Fractionable : Concatenable](
-			other: PiecewiseIntegrableTrajectory[C]
-		)(f: (B, C) => D): PiecewiseIntegrableTrajectory[D] = StaggeredIntegrableTrajectory.combine(this, other)(f)
+//		override def combineWith[C: Fractionable : Concatenable, D: Fractionable : Concatenable](other: StaggeredTrajectory[C])
+//			(f: (B, C) => D): PiecewiseTrajectory[D] = combine(this, other)(f)
 
 	}
-
 }
