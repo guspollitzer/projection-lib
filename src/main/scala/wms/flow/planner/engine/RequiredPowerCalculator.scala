@@ -7,6 +7,7 @@ import math.{Fractionable, PiecewiseTrajectoryAlgebra, StaggeredTrajectoryAlgebr
 import queue.{FifoQueue, Heap, PriorityQueue, given}
 import time.*
 
+import scala.reflect.Typeable
 import scala.annotation.tailrec
 import scala.collection.immutable
 
@@ -15,8 +16,11 @@ class RequiredPowerCalculator(val sinkDownstreamDemandTrajectoryAlgebra: Piecewi
 	type PiecewiseTrajectory[Q] = sinkDownstreamDemandTrajectoryAlgebra.T[Q]
 	type QueueTrajectory = Either[PiecewiseTrajectory[PriorityQueue], PiecewiseTrajectory[FifoQueue]]
 
-	def buildSinkDemandQueueTrajectory(f: PriorityQueue => PriorityQueue): QueueTrajectory =
+	def buildSinkDemandQueueTrajectory(f: PriorityQueue => PriorityQueue): QueueTrajectory = {
+		val y = summon[Typeable[Long]]
+		val x = summon[Typeable[scala.collection.immutable.TreeMap[Long, Int]]]
 		Left(sinkDownstreamDemandTrajectoryAlgebra.buildTrajectory(stepIndex => f(sinkDownstreamDemandTrajectoryAlgebra.getPieceAt(stepIndex).wholeIntegral)))
+	}
 
 	case class StageState(
 		demandTrajectory: QueueTrajectory

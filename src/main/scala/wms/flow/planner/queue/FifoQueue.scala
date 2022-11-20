@@ -54,3 +54,4 @@ given Fractionable[FifoQueue] with {
 	extension (fq: FifoQueue) def takeFraction(fraction: Float): FifoQueue =
 		fq.map(_.takeFraction(fraction))
 }
+

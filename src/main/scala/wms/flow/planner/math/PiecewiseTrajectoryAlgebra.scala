@@ -6,6 +6,7 @@ import time.Instant
 import queue.Concatenable
 
 import scala.annotation.targetName
+import scala.reflect.Typeable
 
 object PiecewiseTrajectoryAlgebra {
 	
@@ -26,6 +27,8 @@ object PiecewiseTrajectoryAlgebra {
 //		 */
 //		def integral(from: Instant, to: Instant): A
 	}
+
+	trait Helper[B]
 	
 }
 
@@ -39,22 +42,18 @@ trait PiecewiseTrajectoryAlgebra[+A] {
 
 	def map[B](f: A => B): PiecewiseTrajectoryAlgebra[B]
 
-	def buildTrajectory[B: Fractionable : Concatenable](f: Int => B): T[B]
+	def buildTrajectory[B: Typeable](f: Int => B): T[B]
 
-	def combine[B: Fractionable : Concatenable, C: Fractionable : Concatenable, D: Fractionable : Concatenable](
-		ptA: T[B],
-		ptB: T[C]
-	)(f: (B, C) => D): T[D]
+	def combine[B: Typeable, C: Typeable, D: Typeable](ptA: T[B], ptB: T[C])(f: (B, C) => D): T[D]
 
 	/** A piecewise trajectory of which we just need to know how to compute the definite integral on any interval. */
-	trait PiecewiseTrajectory[+B: Fractionable : Concatenable] {
+	trait PiecewiseTrajectory[+B: Typeable] {
 		self: T[B] =>
 
 		def getPieceAt(index: Int): P[B]
 
 		def integrate(from: Instant, to: Instant): B
 
-		def combineWith[C: Fractionable : Concatenable, D: Fractionable : Concatenable](other: T[C])(f: (B, C) => D): T[D] =
-			combine[B, C, D](self, other)(f)
+		def combineWith[C: Typeable, D: Typeable](other: T[C])(f: (B, C) => D): T[D] = combine[B, C, D](self, other)(f)
 	}
 }
