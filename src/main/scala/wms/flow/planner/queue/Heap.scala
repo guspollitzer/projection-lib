@@ -7,6 +7,16 @@ import wms.flow.planner.math.Fractionable
 type Heap = Map[Category, Quantity]
 
 extension (heap: Heap) {
+
+	def append(category: Category, quantityToAdd: Quantity): Heap =
+		heap.get(category) match {
+			case Some(oldQuantityAtCategory) => heap.updated(
+				category,
+				oldQuantityAtCategory + quantityToAdd
+			)
+			case None => heap + (category -> quantityToAdd)
+		}
+		
 	def consume(quantityToConsume: Quantity): Consumption[Heap] = {
 		val quantityAvailable: Quantity = heap.values.sum
 		if quantityToConsume >= quantityAvailable then {

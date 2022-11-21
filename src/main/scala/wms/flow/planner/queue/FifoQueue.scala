@@ -7,6 +7,7 @@ import wms.flow.planner.math.Fractionable
 
 import scala.annotation.targetName
 import scala.collection.immutable.Queue
+import scala.annotation.tailrec
 
 type FifoQueue = List[Heap]
 
@@ -16,22 +17,28 @@ given QueueOps[FifoQueue] with {
 
 		def consumed(quantityToConsume: Quantity): Consumption[FifoQueue] = {
 			assert(quantityToConsume >= 0)
+			loop(quantityToConsume, Nil)
+		}
 
+		@tailrec
+		private def loop(quantityToConsume: Quantity, alreadyConsumed: List[Heap]): Consumption[FifoQueue] = {
 			if quantityToConsume == 0 then {
-				Consumption(queue, Nil, 0)
+				Consumption(queue, alreadyConsumed.reverse, 0)
 			} else {
 				queue match {
-					case Nil =>
-						Consumption(Nil, Nil, quantityToConsume)
+					case Nil => Consumption(Nil, alreadyConsumed.reverse, quantityToConsume)
 
 					case head :: tail =>
-						val takenFromHeap = head.consume(quantityToConsume)
-						if takenFromHeap.excess == 0 then {
-							Consumption[FifoQueue](takenFromHeap.remaining :: tail, List(takenFromHeap.consumed), 0)
+						val takenFromHead = head.consume(quantityToConsume)
+						if takenFromHead.excess == 0 then {
+							Consumption[FifoQueue](
+								takenFromHead.remaining :: tail,
+								(takenFromHead.consumed :: alreadyConsumed).reverse,
+								0
+							)
 						} else {
-							assert(takenFromHeap.consumed.nonEmpty)
-							val consumedFromTail = tail.consumed(takenFromHeap.excess)
-							Consumption[FifoQueue](consumedFromTail.remaining, takenFromHeap.consumed :: consumedFromTail.consumed, consumedFromTail.excess)
+							assert(takenFromHead.consumed.nonEmpty)
+							tail.loop(takenFromHead.excess, takenFromHead.consumed :: alreadyConsumed)
 						}
 				}
 			}
