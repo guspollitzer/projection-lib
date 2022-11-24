@@ -36,27 +36,25 @@ object Grafo {
 		)
 
 		println(eClosedGraph)
-		
-		val x = IndexedSeq(1,2,3)
-		val y = x.apply(2)
 
 //		eClosedGraph.map {
 //			closedGraph =>
 //
-//				val steps = IndexedSeq(Step(1f, 2f, TreeMap.empty[Priority, Heap](Instant.ordering)))
+//				val steps = IndexedSeq(Step(1f, 2f, TreeMap.empty[Priority, Heap]))
 //				val sinkDownstreamDemandAlgebra = new StaggeredTrajectoryAlgebra(steps.view)
 //				val rpc = new RequiredPowerCalculator(sinkDownstreamDemandAlgebra)
+//				
 //				val stateAtStartingInstant: GraphMap[rpc.StageState] = GraphMap
 //					.fill[rpc.StageState](closedGraph)(stage => stage.name match {
 //						case "flow" | "join" =>
-//							val pt = 
-//							rpc.buildSinkDemandQueueTrajectory(
+//							val pt = rpc.buildSinkDemandQueueTrajectory(
+//								
 //						case _ => rpc.StageState(Left(TreeMap.empty))
 //					}
 //					)
 //
 //				val desiredBacklogAtEndingInstant: GraphMap[Duration] = GraphMap.fill(closedGraph)(stage => ??? )
-//				
+//
 //				rpc.calcRequiredPowerAt(
 //					0f,
 //					stateAtStartingInstant,

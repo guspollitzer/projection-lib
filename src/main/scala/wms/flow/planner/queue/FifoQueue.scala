@@ -4,6 +4,7 @@ package queue
 import global.Quantity
 import queue.Heap
 import wms.flow.planner.math.Fractionable
+import util.TypeId
 
 import scala.annotation.targetName
 import scala.collection.immutable.Queue
@@ -62,3 +63,4 @@ given Fractionable[FifoQueue] with {
 		fq.map(_.takeFraction(fraction))
 }
 
+given TypeId[FifoQueue] = new TypeId[FifoQueue]{}

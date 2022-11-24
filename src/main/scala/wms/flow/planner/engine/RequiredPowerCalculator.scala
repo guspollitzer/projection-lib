@@ -6,22 +6,23 @@ import graph.{ClosedGraph, Flow, Fork2, GraphMap, Join2, Sink, Source, Stage}
 import math.{Fractionable, PiecewiseTrajectoryAlgebra, StaggeredTrajectoryAlgebra, given}
 import queue.{FifoQueue, Heap, PriorityQueue, given}
 import time.*
+import util.{OneOf, CaseA, CaseB}
 
-import scala.reflect.Typeable
+import util.TypeId
 import scala.annotation.tailrec
 import scala.collection.immutable
 
 class RequiredPowerCalculator(val sinkDownstreamDemandTrajectoryAlgebra: PiecewiseTrajectoryAlgebra[PriorityQueue]) {
 
+	type Backlog = OneOf[PriorityQueue, FifoQueue]
 	type PiecewiseTrajectory[Q] = sinkDownstreamDemandTrajectoryAlgebra.T[Q]
-	type QueueTrajectory = Either[PiecewiseTrajectory[PriorityQueue], PiecewiseTrajectory[FifoQueue]]
+	type QueueTrajectory = OneOf[PiecewiseTrajectory[PriorityQueue], PiecewiseTrajectory[FifoQueue]]
 
 	def buildSinkDemandQueueTrajectory(f: PriorityQueue => PriorityQueue): QueueTrajectory = {
-		val y = summon[Typeable[Long]]
-		val x = summon[Typeable[scala.collection.immutable.TreeMap[Long, Int]]]
-		Left(sinkDownstreamDemandTrajectoryAlgebra.buildTrajectory(stepIndex => f(sinkDownstreamDemandTrajectoryAlgebra.getPieceAt(stepIndex).wholeIntegral)))
+		CaseA(sinkDownstreamDemandTrajectoryAlgebra.buildTrajectory[PriorityQueue](stepIndex => f(sinkDownstreamDemandTrajectoryAlgebra.getPieceAt(stepIndex).wholeIntegral)))
 	}
 
+	case class StageInitialState(backlog: Backlog)
 	case class StageState(
 		demandTrajectory: QueueTrajectory
 	)
@@ -47,10 +48,10 @@ class RequiredPowerCalculator(val sinkDownstreamDemandTrajectoryAlgebra: Piecewi
 
 	def calcRequiredPowerAt(
 		startingInstant: Instant,
-		stateAtStartingInstant: GraphMap[StageState],
+		stateAtStartingInstant: GraphMap[StageInitialState],
 		endingInstant: Instant,
 		desiredBacklogAtEndingInstant: GraphMap[Duration],
-		sinkByPath: Map[Path, Sink]
+		sinkByPath: Map[Path, Sink],
 	): GraphMap[StageState] = {
 
 		def downStreamDemandTrajectoryOf(sink: Sink): PiecewiseTrajectory[PriorityQueue] = {
@@ -60,20 +61,21 @@ class RequiredPowerCalculator(val sinkDownstreamDemandTrajectoryAlgebra: Piecewi
 		}
 
 
-		stateAtStartingInstant.calcUpward(
-			(stage: Stage, oldState: StageState, alreadyCalculated: Map[Stage, StageState]) => {
+		var x = stateAtStartingInstant.calcUpward[StageState](
+			(stage: Stage, initialState: StageInitialState, alreadyCalculated: Map[Stage, StageState]) => {
 
 				val desiredBacklogDuration: Duration = desiredBacklogAtEndingInstant.get(stage)
 
-				val downstreamDemand = getDownstreamDemand(
-					stage,
-					stateAtStartingInstant,
-					downStreamDemandTrajectoryOf
-				)
+				val downstreamDemand = getDownstreamDemand(stage, downStreamDemandTrajectoryOf, alreadyCalculated)
+
+				downstreamDemand match
+					case CaseA(priorityTrajectory: PiecewiseTrajectory[PriorityQueue]) =>
+
+					case CaseB(fifoTrajectory: PiecewiseTrajectory[FifoQueue]) =>
 
 				//				val desiredBacklogAtEndingInstant =
 
-				oldState
+				StageState(downstreamDemand)
 			}
 		)
 
@@ -82,33 +84,38 @@ class RequiredPowerCalculator(val sinkDownstreamDemandTrajectoryAlgebra: Piecewi
 
 	inline private def getDownstreamDemand(
 		stage: Stage,
-		stateAtStartingInstant: GraphMap[StageState],
-		sinksDownstreamDemandTrajectoryGetter: Sink => PiecewiseTrajectory[PriorityQueue]
+		sinksDownstreamDemandTrajectoryGetter: Sink => PiecewiseTrajectory[PriorityQueue],
+		alreadyCalculatedStagesStates: Map[Stage, StageState],
 	): QueueTrajectory = {
-		stage match {
+		val oQueueTrajectory: Option[QueueTrajectory] = stage match {
 			case sink: Sink =>
-				Left(sinksDownstreamDemandTrajectoryGetter(sink))
+				Some(CaseA(sinksDownstreamDemandTrajectoryGetter(sink)))
 
 			case source: Source =>
-				stateAtStartingInstant.get(source.out.to.host).demandTrajectory
+				alreadyCalculatedStagesStates.get(source.out.to.host).map(_.demandTrajectory)
 
 			case flow: Flow[?, ?] =>
-				stateAtStartingInstant.get(flow.out.to.host).demandTrajectory
+				alreadyCalculatedStagesStates.get(flow.out.to.host).map(_.demandTrajectory)
 
 			case join2: Join2[?, ?] =>
-				stateAtStartingInstant.get(join2.out.to.host).demandTrajectory
+				alreadyCalculatedStagesStates.get(join2.out.to.host).map(_.demandTrajectory)
 
 			case fork2: Fork2[?, ?] =>
-				val outADemandTrajectory: QueueTrajectory = stateAtStartingInstant.get(fork2.outA.to.host).demandTrajectory
-				val outBDemandTrajectory: QueueTrajectory = stateAtStartingInstant.get(fork2.outB.to.host).demandTrajectory
+				val outADemandTrajectory: Option[QueueTrajectory] = alreadyCalculatedStagesStates.get(fork2.outA.to.host).map(_.demandTrajectory)
+				val outBDemandTrajectory: Option[QueueTrajectory] = alreadyCalculatedStagesStates.get(fork2.outB.to.host).map(_.demandTrajectory)
 				(outADemandTrajectory, outBDemandTrajectory) match {
-					case (Right(a), Right(b)) => Right(sinkDownstreamDemandTrajectoryAlgebra.combine[FifoQueue, FifoQueue, FifoQueue](a, b)(_ ++ _))
-					case (Left(a), Left(b)) => Left(a.combineWith(b)(_ ++ _))
+					case (Some(CaseA(a)), Some(CaseA(b))) => Some(CaseA(a.combineWith(b)(_ ++ _)))
+					case (Some(CaseB(a)), Some(CaseB(b))) => Some(CaseB(a.combineWith(b)(_ ++ _)))
 					case _ => throw IllegalStateException(
 						s"stage=${stage.name}, outADemand=$outADemandTrajectory, outBDemand=$outBDemandTrajectory"
 					)
 				}
 		}
+
+		oQueueTrajectory.getOrElse( throw IllegalStateException(
+				s"stage=${stage.name}, alreadyCalculatedStagesStates=$alreadyCalculatedStagesStates"
+			)
+		)
 	}
 
 }

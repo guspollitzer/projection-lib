@@ -10,27 +10,27 @@ import StaggeredTrajectoryAlgebra.*
 import scala.annotation.tailrec
 import scala.collection.immutable.TreeMap
 import scala.collection.IndexedSeqView
-import scala.reflect.Typeable
+import util.TypeId
 
 object StaggeredTrajectoryAlgebra {
 
 	case class Step[+A](start: Instant, end: Instant, wholeIntegral: A) extends Piece[A]
 
 	case class FractionAndConcatOpsFor[A](fractionable: Fractionable[A], concatenable: Concatenable[A])
-		(using val typeable: Typeable[A])
+		(using val typeMark: TypeId[A])
 
 	class FractionAndConcatOpsSummoner(opsByType: FractionAndConcatOpsFor[?]*) {
-		def opsFor[A: Typeable]: FractionAndConcatOpsFor[A] = {
-			val typeable = summon[Typeable[A]]
+		def opsFor[A: TypeId]: FractionAndConcatOpsFor[A] = {
+			val typeMarkA = summon[TypeId[A]]
 			opsByType
-				.find(facof => facof.typeable == typeable)
-				.getOrElse(throw new IllegalArgumentException(s"A Fractionable for $typeable was not found."))
+				.find(facof => facof.typeMark.equalsTo(typeMarkA))
+				.getOrElse(throw new IllegalArgumentException(s"A Fractionable for $typeMarkA was not found."))
 				.asInstanceOf[FractionAndConcatOpsFor[A]]
 		}
 
-		def summonFractionableFor[A: Typeable]: Fractionable[A] = opsFor[A].fractionable
+		def summonFractionableFor[A: TypeId]: Fractionable[A] = opsFor[A].fractionable
 
-		def summonConcatenableFor[A: Typeable]: Concatenable[A] = opsFor[A].concatenable
+		def summonConcatenableFor[A: TypeId]: Concatenable[A] = opsFor[A].concatenable
 	}
 }
 
@@ -76,23 +76,23 @@ class StaggeredTrajectoryAlgebra[+A] private(
 
 	override def map[B](f: A => B): StaggeredTrajectoryAlgebra[B] =
 		new StaggeredTrajectoryAlgebra[B](
-			steps.view.map(step => Step(step.start, step.end, f(step.wholeIntegral))),
+			steps.map(step => Step(step.start, step.end, f(step.wholeIntegral))),
 			stepIndexByStartingInstant
 		)
 
-	override def buildTrajectory[B: Typeable](wholeIntegralByStepIndex: Int => B): T[B] =
+	override def buildTrajectory[B: TypeId](wholeIntegralByStepIndex: Int => B): T[B] =
 		new StaggeredTrajectory(wholeIntegralByStepIndex)
 
 	import math.PiecewiseTrajectoryAlgebra
 
-	override def combine[B: Typeable, C: Typeable, D: Typeable](ptA: T[B], ptB: T[C])(f: (B, C) => D): T[D] =
+	override def combine[B: TypeId, C: TypeId, D: TypeId](ptA: T[B], ptB: T[C])(f: (B, C) => D): T[D] =
 		selfFactory.buildTrajectory[D](stepIndex => f(
 			ptA.wholeIntegralByStepIndex(stepIndex),
 			ptB.wholeIntegralByStepIndex(stepIndex)
 		)
 		)
 
-	class StaggeredTrajectory[+B: Typeable](val wholeIntegralByStepIndex: Int => B) extends PiecewiseTrajectory[B] {
+	class StaggeredTrajectory[+B: TypeId](val wholeIntegralByStepIndex: Int => B) extends PiecewiseTrajectory[B] {
 		selfTrajectory =>
 
 		override def getPieceAt(index: Int): StepView[B] = {
@@ -114,8 +114,7 @@ class StaggeredTrajectoryAlgebra[+A] private(
 				val pieceWholeIntegral: B = wholeIntegralByStepIndex(stepIndex)
 				if to <= step.end
 				then {
-					val stepIntegral = pieceWholeIntegral.takeFraction((to - fragmentStart) / (step.end - step
-						.start)
+					val stepIntegral = pieceWholeIntegral.takeFraction((to - fragmentStart) / (step.end - step.start)
 					)
 					accum ++ stepIntegral
 				}

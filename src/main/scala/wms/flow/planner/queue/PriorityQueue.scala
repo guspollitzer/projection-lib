@@ -3,6 +3,7 @@ package queue
 
 import global.{Category, Priority, Quantity}
 import math.Fractionable
+import util.TypeId
 
 import scala.annotation.{tailrec, targetName}
 import scala.collection.immutable.TreeMap
@@ -65,3 +66,6 @@ given Fractionable[PriorityQueue] with {
 	extension (pq: PriorityQueue) def takeFraction(fraction: Float): PriorityQueue =
 		pq.map((priority, heap) => priority -> heap.takeFraction(fraction))
 }
+
+given TypeId[PriorityQueue] = new TypeId[PriorityQueue]{}
+
