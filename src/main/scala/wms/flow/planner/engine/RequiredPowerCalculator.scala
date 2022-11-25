@@ -3,7 +3,7 @@ package engine
 
 import global.*
 import graph.{ClosedGraph, Flow, Fork2, GraphMap, Join2, Sink, Source, Stage}
-import math.{Fractionable, PiecewiseTrajectoryAlgebra, StaggeredTrajectoryAlgebra, given}
+import math.{Fractionable, PiecewiseAlgebra, StaggeredAlgebra, given}
 import queue.{FifoQueue, Heap, PriorityQueue, given}
 import time.*
 import util.{OneOf, CaseA, CaseB}
@@ -12,15 +12,20 @@ import util.TypeId
 import scala.annotation.tailrec
 import scala.collection.immutable
 
-class RequiredPowerCalculator(val sinkDownstreamDemandTrajectoryAlgebra: PiecewiseTrajectoryAlgebra[PriorityQueue]) {
+class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
+	import piecewiseAlgebra.*
 
 	type Backlog = OneOf[PriorityQueue, FifoQueue]
-	type PiecewiseTrajectory[Q] = sinkDownstreamDemandTrajectoryAlgebra.T[Q]
+	type PiecewiseTrajectory[+Q] = piecewiseAlgebra.Trajectory[Q]
 	type QueueTrajectory = OneOf[PiecewiseTrajectory[PriorityQueue], PiecewiseTrajectory[FifoQueue]]
 
-	def buildSinkDemandQueueTrajectory(f: PriorityQueue => PriorityQueue): QueueTrajectory = {
-		CaseA(sinkDownstreamDemandTrajectoryAlgebra.buildTrajectory[PriorityQueue](stepIndex => f(sinkDownstreamDemandTrajectoryAlgebra.getPieceAt(stepIndex).wholeIntegral)))
-	}
+	type CasePriority[+A, +B] = CaseA[A, B]
+	type CaseFifo[+A, +B] = CaseB[A, B]
+
+
+//	def buildSinkDemandQueueTrajectory(f: PriorityQueue => PriorityQueue): QueueTrajectory = {
+//		CaseA(piecewiseAlgebra.buildTrajectory[PriorityQueue](stepIndex => f(piecewiseAlgebra.getPieceAt(stepIndex).wholeIntegral)))
+//	}
 
 	case class StageInitialState(backlog: Backlog)
 	case class StageState(
@@ -31,32 +36,24 @@ class RequiredPowerCalculator(val sinkDownstreamDemandTrajectoryAlgebra: Piecewi
 
 	def calc(forecast: PiecewiseTrajectory[Heap]): RequiredPower = ???
 
-
-	extension (queue: PriorityQueue) {
-		def filteredBySink(sink: Sink, sinkByPath: Map[Path, Sink]): PriorityQueue = {
-			val sinkDownStreamQueue =
-				for (priority, heap) <- queue
-					yield {
-						val heapPortionAssignedToThisSink = heap.filter {
-							case (category, _) => sink == sinkByPath(category.path)
-						}
-						priority -> heapPortionAssignedToThisSink
-					}
-			sinkDownStreamQueue.filter { (_, h) => h.nonEmpty }
-		}
-	}
-
 	def calcRequiredPowerAt(
-		startingInstant: Instant,
 		stateAtStartingInstant: GraphMap[StageInitialState],
-		endingInstant: Instant,
-		desiredBacklogAtEndingInstant: GraphMap[Duration],
+		desiredBacklogAtEndingInstant: GraphMap[Trajectory[Duration]],
 		sinkByPath: Map[Path, Sink],
+		downstreamDemandTrajectory: PiecewiseTrajectory[PriorityQueue],
 	): GraphMap[StageState] = {
 
 		def downStreamDemandTrajectoryOf(sink: Sink): PiecewiseTrajectory[PriorityQueue] = {
-			sinkDownstreamDemandTrajectoryAlgebra.buildTrajectory { stepIndex =>
-				sinkDownstreamDemandTrajectoryAlgebra.getPieceAt(stepIndex).wholeIntegral.filteredBySink(sink, sinkByPath)
+			for downstreamDemand <- downstreamDemandTrajectory yield {
+				val sinkDownStreamQueue =
+					for (priority, heap) <- downstreamDemand
+						yield {
+							val heapPortionAssignedToThisSink = heap.filter {
+								case (category, _) => sink == sinkByPath(category.path)
+							}
+							priority -> heapPortionAssignedToThisSink
+						}
+				sinkDownStreamQueue.filter { (_, h) => h.nonEmpty }
 			}
 		}
 
@@ -64,7 +61,7 @@ class RequiredPowerCalculator(val sinkDownstreamDemandTrajectoryAlgebra: Piecewi
 		var x = stateAtStartingInstant.calcUpward[StageState](
 			(stage: Stage, initialState: StageInitialState, alreadyCalculated: Map[Stage, StageState]) => {
 
-				val desiredBacklogDuration: Duration = desiredBacklogAtEndingInstant.get(stage)
+				val desiredBacklogDurationTrajectory: Trajectory[Duration] = desiredBacklogAtEndingInstant.get(stage)
 
 				val downstreamDemand = getDownstreamDemand(stage, downStreamDemandTrajectoryOf, alreadyCalculated)
 

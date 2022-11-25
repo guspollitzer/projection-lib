@@ -205,7 +205,14 @@
       <option name="project" value="LOCAL" />
       <updated>1669032008947</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="Replace Typeable with TypeId">
+      <created>1669288119652</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1669288119652</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -229,7 +236,9 @@
     <MESSAGE value="compiles hiding trajectory implementation" />
     <MESSAGE value="compiles hiding trajectory implementation and StaggeredTrajectoryAlgebra is covariant." />
     <MESSAGE value="correct queues appended and comsumed method bug" />
-    <option name="LAST_COMMIT_MESSAGE" value="correct queues appended and comsumed method bug" />
+    <MESSAGE value="Replace Typeable with TypeId" />
+    <MESSAGE value="Redo piecewise algebras" />
+    <option name="LAST_COMMIT_MESSAGE" value="Redo piecewise algebras" />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>
