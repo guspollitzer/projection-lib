@@ -1,8 +1,10 @@
-package wms.flow.planner.util
+package wms.flow.planner
+package util
 
-import wms.flow.planner.util.TypeId.{typeIds, registerNew}
+import global.Quantity
+import util.TypeId.{registerNew, typeIds}
 
-import scala.collection.{immutable}
+import scala.collection.immutable
 
 object TypeId {
 
@@ -16,6 +18,8 @@ object TypeId {
 		this.synchronized(typeIds += id)
 		id
 	}
+
+	given TypeId[Quantity] = new TypeId[Quantity]{}
 }
 
 trait TypeId[A] {

@@ -4,11 +4,12 @@ package prueba
 import engine.RequiredPowerCalculator
 import graph.*
 import math.*
-import queue.{FifoQueue, PriorityQueue, Heap}
+import queue.{FifoQueue, PriorityQueue, Heap, total}
 import StaggeredTrajectoryAlgebra.*
 import time.*
 import time.Instant.{*, given}
 import global.*
+
 
 import scala.collection.immutable.TreeMap
 import scala.language.implicitConversions
@@ -16,6 +17,9 @@ import scala.language.implicitConversions
 object Grafo {
 
 	def main(args: Array[String]): Unit = {
+
+		val heap: Heap = Map.empty[Category, Quantity]
+		val load = heap.total
 
 		val eClosedGraph = ClosedGraph.build(
 			builder => {
@@ -43,12 +47,12 @@ object Grafo {
 //				val steps = IndexedSeq(Step(1f, 2f, TreeMap.empty[Priority, Heap]))
 //				val sinkDownstreamDemandAlgebra = new StaggeredTrajectoryAlgebra(steps.view)
 //				val rpc = new RequiredPowerCalculator(sinkDownstreamDemandAlgebra)
-//				
+//
 //				val stateAtStartingInstant: GraphMap[rpc.StageState] = GraphMap
 //					.fill[rpc.StageState](closedGraph)(stage => stage.name match {
 //						case "flow" | "join" =>
 //							val pt = rpc.buildSinkDemandQueueTrajectory(
-//								
+//
 //						case _ => rpc.StageState(Left(TreeMap.empty))
 //					}
 //					)

@@ -2,7 +2,7 @@ package wms.flow.planner
 package queue
 
 import global.Quantity
-import queue.Heap
+import queue.{Heap, total}
 import wms.flow.planner.math.Fractionable
 import util.TypeId
 
@@ -14,6 +14,9 @@ type FifoQueue = List[Heap]
 
 given QueueOps[FifoQueue] with {
 	extension (queue: FifoQueue) {
+
+		def load: Quantity = queue.view.map[Quantity](h => h.total).sum
+
 		def appended(heap: Heap): FifoQueue = queue.appended(heap)
 
 		def consumed(quantityToConsume: Quantity): Consumption[FifoQueue] = {
@@ -59,7 +62,7 @@ given Concatenable[FifoQueue] with {
 }
 
 given Fractionable[FifoQueue] with {
-	extension (fq: FifoQueue) def takeFraction(fraction: Float): FifoQueue =
+	extension (fq: FifoQueue) def takeFraction(fraction: Quantity): FifoQueue =
 		fq.map(_.takeFraction(fraction))
 }
 

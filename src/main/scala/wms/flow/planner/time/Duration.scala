@@ -3,7 +3,6 @@ package time
 
 import scala.annotation.targetName
 
-
 type Duration = Float
 
 //object Duration {

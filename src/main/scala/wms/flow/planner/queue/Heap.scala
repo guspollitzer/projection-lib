@@ -2,11 +2,15 @@ package wms.flow.planner
 package queue
 
 import global.{Category, Quantity}
-import wms.flow.planner.math.Fractionable
+import math.Fractionable
+
+import scala.jdk.StreamConverters._
 
 type Heap = Map[Category, Quantity]
 
 extension (heap: Heap) {
+
+	def total: Quantity = heap.view.values.sum
 
 	def append(category: Category, quantityToAdd: Quantity): Heap =
 		heap.get(category) match {
@@ -16,7 +20,7 @@ extension (heap: Heap) {
 			)
 			case None => heap + (category -> quantityToAdd)
 		}
-		
+
 	def consume(quantityToConsume: Quantity): Consumption[Heap] = {
 		val quantityAvailable: Quantity = heap.values.sum
 		if quantityToConsume >= quantityAvailable then {
@@ -37,6 +41,6 @@ given EmptyAble[Heap] with {
 }
 
 given Fractionable[Heap] with {
-	extension (heap: Heap) def takeFraction(fraction: Float): Heap = heap.map((c, q) => c -> q * fraction)
+	extension (heap: Heap) def takeFraction(fraction: Quantity): Heap = heap.map((c, q) => c -> q * fraction)
 }
 

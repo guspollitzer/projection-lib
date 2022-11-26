@@ -16,8 +16,7 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 	import piecewiseAlgebra.*
 
 	type Backlog = OneOf[PriorityQueue, FifoQueue]
-	type PiecewiseTrajectory[+Q] = piecewiseAlgebra.Trajectory[Q]
-	type QueueTrajectory = OneOf[PiecewiseTrajectory[PriorityQueue], PiecewiseTrajectory[FifoQueue]]
+	type QueueTrajectory = OneOf[Trajectory[PriorityQueue], Trajectory[FifoQueue]]
 
 	type CasePriority[+A, +B] = CaseA[A, B]
 	type CaseFifo[+A, +B] = CaseB[A, B]
@@ -34,16 +33,17 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 
 	case class RequiredPower()
 
-	def calc(forecast: PiecewiseTrajectory[Heap]): RequiredPower = ???
+	def calc(forecast: Trajectory[Heap]): RequiredPower = ???
 
 	def calcRequiredPowerAt(
 		stateAtStartingInstant: GraphMap[StageInitialState],
 		desiredBacklogAtEndingInstant: GraphMap[Trajectory[Duration]],
+		maxBacklogLoad: GraphMap[Int],
 		sinkByPath: Map[Path, Sink],
-		downstreamDemandTrajectory: PiecewiseTrajectory[PriorityQueue],
+		downstreamDemandTrajectory: Trajectory[PriorityQueue],
 	): GraphMap[StageState] = {
 
-		def downStreamDemandTrajectoryOf(sink: Sink): PiecewiseTrajectory[PriorityQueue] = {
+		def downStreamDemandTrajectoryOf(sink: Sink): Trajectory[PriorityQueue] = {
 			for downstreamDemand <- downstreamDemandTrajectory yield {
 				val sinkDownStreamQueue =
 					for (priority, heap) <- downstreamDemand
@@ -57,23 +57,34 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 			}
 		}
 
+		class Loop {
+			var isFinal = false
+		}
+		reduce[Loop](new Loop, _.isFinal)((state: Loop, index: Int, start: Instant, end: Instant) => {
 
-		var x = stateAtStartingInstant.calcUpward[StageState](
-			(stage: Stage, initialState: StageInitialState, alreadyCalculated: Map[Stage, StageState]) => {
+			var x = stateAtStartingInstant.calcUpward[StageState]((stage: Stage, initialState: StageInitialState, alreadyCalculated: Map[Stage, StageState]) => {
 
-				val desiredBacklogDurationTrajectory: Trajectory[Duration] = desiredBacklogAtEndingInstant.get(stage)
+				val downstreamDemandQueue = getDownstreamDemand(stage, downStreamDemandTrajectoryOf, alreadyCalculated)
 
-				val downstreamDemand = getDownstreamDemand(stage, downStreamDemandTrajectoryOf, alreadyCalculated)
+				val downstreamDemandLoad: Trajectory[Quantity] = downstreamDemandQueue match {
+					case CaseA(priorityTrajectory) => priorityTrajectory.map(_.load)
+					case CaseB(fifoTrajectory) => fifoTrajectory.map(_.load)
+				}
 
-				downstreamDemand match
-					case CaseA(priorityTrajectory: PiecewiseTrajectory[PriorityQueue]) =>
+				val stagePower = downstreamDemandLoad.getWholePieceIntegralAt(index)
+				val desiredBacklogDuration: Duration = desiredBacklogAtEndingInstant.get(stage).getPieceMeanAt(index)
+				val desiredBacklogLoad = scala.math.min(
+					maxBacklogLoad.get(stage),
+					downstreamDemandLoad.integrate(end, end + desiredBacklogDuration)
+				)
 
-					case CaseB(fifoTrajectory: PiecewiseTrajectory[FifoQueue]) =>
+				val upstreamDemand = ???
 
-				//				val desiredBacklogAtEndingInstant =
-
-				StageState(downstreamDemand)
+				StageState(downstreamDemandQueue)
 			}
+			)
+			???
+		}
 		)
 
 		???
@@ -81,7 +92,7 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 
 	inline private def getDownstreamDemand(
 		stage: Stage,
-		sinksDownstreamDemandTrajectoryGetter: Sink => PiecewiseTrajectory[PriorityQueue],
+		sinksDownstreamDemandTrajectoryGetter: Sink => Trajectory[PriorityQueue],
 		alreadyCalculatedStagesStates: Map[Stage, StageState],
 	): QueueTrajectory = {
 		val oQueueTrajectory: Option[QueueTrajectory] = stage match {

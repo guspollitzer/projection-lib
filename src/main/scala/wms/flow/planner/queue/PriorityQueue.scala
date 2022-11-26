@@ -12,6 +12,9 @@ type PriorityQueue = TreeMap[Priority, Heap]
 
 given QueueOps[PriorityQueue] with {
 	extension (queue: PriorityQueue) {
+
+		def load: Quantity = queue.view.values.map(heap => heap.total).sum
+
 		def appended(heapToAdd: Heap): PriorityQueue = {
 			var workingMap = queue
 			for (category, quantityToAdd) <- heapToAdd do {
@@ -63,7 +66,7 @@ given Concatenable[PriorityQueue] with {
 }
 
 given Fractionable[PriorityQueue] with {
-	extension (pq: PriorityQueue) def takeFraction(fraction: Float): PriorityQueue =
+	extension (pq: PriorityQueue) def takeFraction(fraction: Quantity): PriorityQueue =
 		pq.map((priority, heap) => priority -> heap.takeFraction(fraction))
 }
 

@@ -7,10 +7,13 @@ import util.TypeId
 trait PiecewiseAlgebra {
 
 	trait Trajectory[+A: TypeId] {
-
-		def numberOfPieces: Int
-		// TODO cuando compile probar exponer `wholePieceIntegralByIndex`
+		/** Gives the integral of the trajectory at the specified piece.
+		  * Valid for integration-friendly trajectories. */
 		def getWholePieceIntegralAt(index: Int): A
+		
+		/** Gives the mean value of the trajectory at the specified piece.
+		  * Valid for non integration-friendly trajectories.  */
+		def getPieceMeanAt(index: Int): A = getWholePieceIntegralAt(index)
 
 		def integrate(from: Instant, to: Instant): A
 
@@ -23,6 +26,10 @@ trait PiecewiseAlgebra {
 		def richCombineWith[B, C: TypeId](that: Trajectory[B])(f: (index: Int, startingInstant: Instant, endingInstant: Instant, a:A, b: B) => C): Trajectory[C] = richCombine(this, that)(f)
 
 	}
+
+	def numberOfPieces: Int
+	def firstPieceStartingInstant: Instant
+	def reduce[S](initialState: S, until: S => Boolean)(f: (state: S, index: Int, start: Instant, end: Instant) => S): S
 
 	def buildTrajectory[A: TypeId](wholeIntegralByStepIndex: IterableOnce[A]): Trajectory[A]
 
