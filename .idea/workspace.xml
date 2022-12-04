@@ -33,9 +33,11 @@
     <list default="true" id="d916dc4d-02ba-4767-bd3d-79a313427327" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/engine/RequiredPowerCalculator.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/engine/RequiredPowerCalculator.scala" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/queue/Consumption.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/queue/Consumption.scala" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/queue/FifoQueue.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/queue/FifoQueue.scala" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/queue/Heap.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/queue/Heap.scala" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/queue/PriorityQueue.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/queue/PriorityQueue.scala" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/util/OneOf.scala" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/scala/wms/flow/planner/util/OneOf.scala" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -102,29 +104,29 @@
     <option name="showModules" value="false" />
     <option name="showVisibilityIcons" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.go.format.on.save.advertiser.fired": "true",
-    "RunOnceActivity.go.formatter.settings.were.checked": "true",
-    "RunOnceActivity.go.migrated.go.modules.settings": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "go.import.settings.migrated": "true",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "scala_project_settings_configurable.last_selected_tab_index": "0",
-    "settings.editor.selected.configurable": "configurable.group.language"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.go.format.on.save.advertiser.fired&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.formatter.settings.were.checked&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.migrated.go.modules.settings&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;scala_project_settings_configurable.last_selected_tab_index&quot;: &quot;0&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;configurable.group.language&quot;
   },
-  "keyToStringList": {
-    "GitStage.ChangesTree.GroupingKeys": [
-      "directory",
-      "module",
-      "repository"
+  &quot;keyToStringList&quot;: {
+    &quot;GitStage.ChangesTree.GroupingKeys&quot;: [
+      &quot;directory&quot;,
+      &quot;module&quot;,
+      &quot;repository&quot;
     ]
   }
-}]]></component>
+}</component>
   <component name="RunManager">
     <configuration name="Scala REPL" type="ScalaScriptConsoleRunConfiguration" factoryName="Scala Console" temporary="true" show_console_on_std_err="false" show_console_on_std_out="false">
       <module name="projection-lib" />
@@ -188,7 +190,9 @@
       <workItem from="1668570433207" duration="16732000" />
       <workItem from="1668658024932" duration="50856000" />
       <workItem from="1668899233941" duration="2173000" />
-      <workItem from="1669552334964" duration="16414000" />
+      <workItem from="1669552334964" duration="17125000" />
+      <workItem from="1669638713463" duration="837000" />
+      <workItem from="1670024857482" duration="26450000" />
     </task>
     <task id="LOCAL-00001" summary="Category from Priority to tuple of (Priority, Path) and all the consecuences.">
       <created>1668291279923</created>
@@ -286,6 +290,17 @@
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>
     <settings-migrated>true</settings-migrated>
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="scala-line">
+          <url>file://$PROJECT_DIR$/src/main/scala/wms/flow/planner/engine/RequiredPowerCalculator.scala</url>
+          <line>76</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

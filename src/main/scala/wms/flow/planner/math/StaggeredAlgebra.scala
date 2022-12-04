@@ -152,7 +152,7 @@ class StaggeredAlgebra private(
 	override def richCombine[A, B, C: TypeId](ta: Trajectory[A], tb: Trajectory[B])(f: (index: Int, startingInstant: Instant, endingInstant: Instant, a: A, b: B) => C): StaggeredTrajectory[C] =
 		new RichTwo(ta, tb)(f)
 
-	override def reduce[S](initialState: S, until: S => Boolean)(f: (state: S, index: Int, start: Instant, end: Instant) => S): S = {
+	override def reduceUntil[S](initialState: S, until: S => Boolean)(f: (state: S, index: Int, start: Instant, end: Instant) => S): S = {
 		@tailrec
 		def loop(state: S, index: Int, start: Instant): S = {
 			if index == pieceEndingInstantByIndex.size || until(state) then state

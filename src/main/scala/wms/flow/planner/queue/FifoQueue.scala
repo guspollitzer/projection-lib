@@ -16,7 +16,11 @@ given QueueOps[FifoQueue] with {
 		def load: Quantity = queue.view.map[Quantity](h => h.total).sum
 
 		def appended(heap: Heap): FifoQueue = queue.appended(heap)
-
+		
+		def mergedWith(thatQueue: FifoQueue): FifoQueue = queue ++ thatQueue
+		
+		def except(thatQueue: FifoQueue): FifoQueue	= queue
+		
 		def consumed(quantityToConsume: Quantity): Consumption[FifoQueue] = {
 			assert(quantityToConsume >= 0)
 			loop(quantityToConsume, Nil)
