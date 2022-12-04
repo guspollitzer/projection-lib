@@ -7,24 +7,53 @@ import util.TypeId
 
 import scala.annotation.{tailrec, targetName}
 import scala.collection.immutable.TreeMap
+import scala.collection.mutable
+import scala.jdk.CollectionConverters.*
+import scala.jdk.StreamConverters.*
 
 type PriorityQueue = TreeMap[Priority, Heap]
 
 given QueueOps[PriorityQueue] with {
-	extension (queue: PriorityQueue) {
+	extension (thisQueue: PriorityQueue) {
 
-		def load: Quantity = queue.view.values.map(heap => heap.total).sum
+		def load: Quantity = thisQueue.view.values.map(heap => heap.total).sum
 
 		def appended(heapToAdd: Heap): PriorityQueue = {
-			var workingMap = queue
+			var workingMap = thisQueue
 			for (category, quantityToAdd) <- heapToAdd do {
 				val newHeapAtPriority: Heap = workingMap.get(category.priority) match {
-					case Some(oldHeapAtPriority) => oldHeapAtPriority.append(category, quantityToAdd)
+					case Some(oldHeapAtPriority) => oldHeapAtPriority.add(category, quantityToAdd)
 					case None => Map(category -> quantityToAdd)
 				}
 				workingMap = workingMap.updated(category.priority, newHeapAtPriority)
 			}
 			workingMap
+		}
+
+		def mergedWith(thatQueue: PriorityQueue): PriorityQueue = {
+			if thatQueue.isEmpty then thisQueue
+			else if thisQueue.isEmpty then thatQueue
+			else {
+				val collector = new java.util.HashMap(thisQueue.asJava)
+				for (priority, thatHeap) <- thatQueue do collector.merge(priority, thatHeap, (a, b) => a.mixedWith(b))
+				TreeMap.from(collector.asScala)
+			}
+		}
+
+		def except(thatQueue: PriorityQueue): PriorityQueue = {
+			if thatQueue.isEmpty then thisQueue
+			else {
+				val builder = TreeMap.newBuilder[Priority, Heap]
+				for (priority, thisHeap) <- thisQueue do {
+					thatQueue.get(priority) match {
+						case None => builder.addOne(priority -> thisHeap)
+						case Some(thatHeap) =>
+							val newHeap = thisHeap.without(thatHeap)
+							if newHeap.nonEmpty then builder.addOne(priority -> newHeap)
+					}
+				}
+				builder.result()
+			}
 		}
 
 		def consumed(quantityToConsume: Quantity): Consumption[PriorityQueue] = {
@@ -35,19 +64,19 @@ given QueueOps[PriorityQueue] with {
 		private def loop(quantityToConsume: Quantity, alreadyConsumed: PriorityQueue): Consumption[PriorityQueue] = {
 			assert(quantityToConsume >= 0)
 			if quantityToConsume == 0 then {
-				Consumption(queue, alreadyConsumed, 0)
+				Consumption(thisQueue, alreadyConsumed, 0)
 			} else {
-				queue.headOption match {
+				thisQueue.headOption match {
 					case None =>
 						Consumption(TreeMap.empty, alreadyConsumed, quantityToConsume)
 
 					case Some((priority, heap)) =>
 						val x: Consumption[Heap] = heap.consume(quantityToConsume)
 						if (x.remaining.nonEmpty) {
-							Consumption(queue.updated(priority, x.remaining), alreadyConsumed + (priority -> x.consumed), 0)
+							Consumption(thisQueue.updated(priority, x.remaining), alreadyConsumed + (priority -> x.consumed), 0)
 						} else {
 							assert(x.consumed == heap)
-							queue.tail.loop(x.excess, alreadyConsumed + (priority -> heap))
+							thisQueue.tail.loop(x.excess, alreadyConsumed + (priority -> heap))
 						}
 				}
 			}

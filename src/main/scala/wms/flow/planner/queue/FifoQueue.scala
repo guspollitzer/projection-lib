@@ -2,13 +2,11 @@ package wms.flow.planner
 package queue
 
 import global.Quantity
-import queue.{Heap, total}
-import wms.flow.planner.math.Fractionable
+import queue.{total, Heap}
 import util.TypeId
+import wms.flow.planner.math.Fractionable
 
-import scala.annotation.targetName
-import scala.collection.immutable.Queue
-import scala.annotation.tailrec
+import scala.annotation.{tailrec, targetName}
 
 type FifoQueue = List[Heap]
 
