@@ -1,5 +1,6 @@
 <component name="ProjectCodeStyleConfiguration">
   <code_scheme name="Project" version="173">
+    <option name="AUTODETECT_INDENTS" value="false" />
     <option name="RIGHT_MARGIN" value="200" />
     <GoCodeStyleSettings>
       <option name="RUN_GO_FMT_ON_REFORMAT" value="false" />
@@ -46,6 +47,9 @@
       <option name="SD_ALIGN_RETURN_COMMENTS" value="false" />
       <option name="SD_KEEP_BLANK_LINES_BETWEEN_TAGS" value="true" />
     </ScalaCodeStyleSettings>
+    <editorconfig>
+      <option name="ENABLED" value="false" />
+    </editorconfig>
     <codeStyleSettings language="Cookie">
       <indentOptions>
         <option name="USE_TAB_CHARACTER" value="false" />

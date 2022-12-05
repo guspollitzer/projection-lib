@@ -33,7 +33,9 @@ trait PiecewiseAlgebra {
 	/** Applies the function `f` to the initialState and the first piece of this [[PiecewiseAlgebra]]. Then applies `f` to the result and the next piece. This loop continues until the last piece of the until predicate gives true. */
 	def reduceUntil[S](initialState: S, until: S => Boolean)(f: (state: S, index: Int, start: Instant, end: Instant) => S): S
 
-	def buildTrajectory[A: TypeId](wholeIntegralByStepIndex: IterableOnce[A]): Trajectory[A]
+	def buildTrajectory[A: TypeId](f: (pieceIndex: Int, pieceStart: Instant, pieceEnd: Instant) => A): Trajectory[A]
+
+	def buildTrajectory[S, A: TypeId](initialState: S)(valueBuilder: (state: S, index: Int, start: Instant, end: Instant) => A)(nextStateBuilder: A => S): Trajectory[A]
 
 	def combine[A, B, C: TypeId](ta: Trajectory[A], tb: Trajectory[B])(f: (A, B) => C): Trajectory[C]
 

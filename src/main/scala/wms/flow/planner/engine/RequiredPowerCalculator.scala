@@ -21,13 +21,13 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 
 	extension (thisQueue: Queue) {
 		def load: Quantity = thisQueue match {
-			case CaseA(priorityQueue) => priorityQueue.load
-			case CaseB(fifoQueue) => fifoQueue.load
+			case CaseA(priorityQueue) => priorityQueue.load;
+			case CaseB(fifoQueue) => fifoQueue.load;
 		}
 
 		def consumed(quantityToConsume: Quantity): OneOf[Consumption[PriorityQueue], Consumption[FifoQueue]] = thisQueue match {
-			case CaseA(priorityQueue) => CaseA(priorityQueue.consumed(quantityToConsume))
-			case CaseB(fifoQueue) => CaseB(fifoQueue.consumed(quantityToConsume))
+			case CaseA(priorityQueue) => CaseA(priorityQueue.consumed(quantityToConsume));
+			case CaseB(fifoQueue) => CaseB(fifoQueue.consumed(quantityToConsume));
 		}
 
 		//		def mergedWith(thatQueue: Queue, minimumLoad: Quantity): Queue = {
@@ -53,13 +53,13 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 
 	extension (thisQueueTrajectory: QueueTrajectory) {
 		def toLoad: Trajectory[Quantity] = thisQueueTrajectory match {
-			case CaseA(priorityTrajectory) => priorityTrajectory.map(_.load)
-			case CaseB(fifoTrajectory) => fifoTrajectory.map(_.load)
+			case CaseA(priorityTrajectory) => priorityTrajectory.map(_.load);
+			case CaseB(fifoTrajectory) => fifoTrajectory.map(_.load);
 		}
 
 		def getWholePieceIntegralAt(index: Int): Queue = thisQueueTrajectory match {
-			case CaseA(priorityTrajectory) => CaseA(priorityTrajectory.getWholePieceIntegralAt(index))
-			case CaseB(fifoTrajectory) => CaseB(fifoTrajectory.getWholePieceIntegralAt(index))
+			case CaseA(priorityTrajectory) => CaseA(priorityTrajectory.getWholePieceIntegralAt(index));
+			case CaseB(fifoTrajectory) => CaseB(fifoTrajectory.getWholePieceIntegralAt(index));
 		}
 
 
@@ -75,11 +75,12 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 		def consumeStartingAt(startingIndex: Int, quantityToConsume: Quantity, prefix: PriorityQueue): Consumption[PriorityQueue] = {
 			@tailrec
 			def loop(index: Int, concatenation: PriorityQueue): Consumption[PriorityQueue] = {
-				val consumption = concatenation.consumed(quantityToConsume)
+				val consumption = concatenation.consumed(quantityToConsume);
 				if consumption.excess == 0 || index >= numberOfPieces then consumption
-				else loop(
-					index + 1, concatenation.mergedWith(trajectory.getWholePieceIntegralAt(index))
-				) // TODO aunque dudo que sea necesario, esto se podría optimizar sumando los `Consumption` en lugar de recalcularlo desde el comienzo cada vez.
+				else {
+					// TODO aunque dudo que sea necesario, esto se podría optimizar sumando los `Consumption` en lugar de recalcularlo desde el comienzo cada vez.
+					loop(index + 1, concatenation.mergedWith(trajectory.getWholePieceIntegralAt(index)));
+				}
 			}
 
 			loop(startingIndex, prefix)
@@ -116,11 +117,11 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 					for (priority, heap) <- downstreamDemand
 						yield {
 							val heapPortionAssignedToThisSink = heap.filter {
-								case (category, _) => sink == sinkByPath(category.path)
+								case (category, _) => sink == sinkByPath(category.path);
 							}
-							priority -> heapPortionAssignedToThisSink
+							priority -> heapPortionAssignedToThisSink;
 						}
-				sinkDownStreamQueue.filter { (_, h) => h.nonEmpty }
+				sinkDownStreamQueue.filter { (_, h) => h.nonEmpty };
 			}
 		}
 
@@ -128,62 +129,55 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 			stage: Stage,
 			stageInitialState: OneOf[StageInitialState[PriorityQueue], StageInitialState[FifoQueue]],
 			alreadyCalculated: Map[Stage, StageStateTrajectory]
-		) => {
+		) =>
 
-			val trajectoryOfQueueDemandedByDownstream: QueueTrajectory = getDownstreamDemand(stage, downStreamDemandTrajectoryOf, alreadyCalculated)
-			val trajectoryOfLoadDemandedByDownstream: Trajectory[Quantity] = trajectoryOfQueueDemandedByDownstream.toLoad
-			val desiredBacklogDurationAtStage: Trajectory[Duration] = desiredBacklogAtEndingInstant.get(stage)
+			val trajectoryOfQueueDemandedByDownstream: QueueTrajectory = getDownstreamDemand(stage, downStreamDemandTrajectoryOf, alreadyCalculated);
+			val trajectoryOfLoadDemandedByDownstream: Trajectory[Quantity] = trajectoryOfQueueDemandedByDownstream.toLoad;
+			val desiredBacklogDurationAtStage: Trajectory[Duration] = desiredBacklogAtEndingInstant.get(stage);
 
 			stageInitialState match {
 				case CaseA(priorityStageInitialState) =>
-					object LoopState {
-						var isFinal = false
-						var stateAtPieceStart: StageInitialState[PriorityQueue] = priorityStageInitialState
-						val builder: mutable.Builder[RequiredPowerAtPiece[PriorityQueue], Iterable[RequiredPowerAtPiece[PriorityQueue]]] = Iterable.newBuilder[RequiredPowerAtPiece[PriorityQueue]]
-					}
+					val requiredPowerTrajectory = buildTrajectory[StageInitialState[PriorityQueue], RequiredPowerAtPiece[PriorityQueue]](priorityStageInitialState) {
+						(loopState, index, start, end) =>
+							val desiredBacklogDuration: Duration = desiredBacklogDurationAtStage.getPieceMeanAt(index);
+							val desiredBacklogLoad: Quantity = scala.math.min(
+								maxBacklogLoad.get(stage),
+								trajectoryOfLoadDemandedByDownstream.integrate(end, end + desiredBacklogDuration)
+							);
 
-					val y = reduceUntil[LoopState.type](LoopState, _.isFinal)((loopState: LoopState.type, index: Int, start: Instant, end: Instant) => {
-
-						val desiredBacklogDuration: Duration = desiredBacklogDurationAtStage.getPieceMeanAt(index)
-						val desiredBacklogLoad: Quantity = scala.math.min(
-							maxBacklogLoad.get(stage),
-							trajectoryOfLoadDemandedByDownstream.integrate(end, end + desiredBacklogDuration)
-						)
-
-						val requiredPowerAtPiece: RequiredPowerAtPiece[PriorityQueue] =
 							trajectoryOfQueueDemandedByDownstream match {
 								case CaseA(trajectoryOfPriorityQueueDemandedByDownstream: Trajectory[PriorityQueue]) =>
-									val priorityQueueDemandedByDownstream: PriorityQueue = trajectoryOfPriorityQueueDemandedByDownstream.getWholePieceIntegralAt(index)
-									val loadDemandedByDownstream: Quantity = priorityQueueDemandedByDownstream.load
+									val priorityQueueDemandedByDownstream: PriorityQueue = trajectoryOfPriorityQueueDemandedByDownstream.getWholePieceIntegralAt(index);
+									val loadDemandedByDownstream: Quantity = priorityQueueDemandedByDownstream.load;
 
-									val productionNeededToSatisfyDownstreamDemand: PriorityQueue = priorityQueueDemandedByDownstream.except(loopState.stateAtPieceStart.backlog)
-									val wayAheadBacklog: PriorityQueue = loopState.stateAtPieceStart.backlog.except(priorityQueueDemandedByDownstream)
-									val futureDemandConsumption: Consumption[PriorityQueue] = trajectoryOfPriorityQueueDemandedByDownstream.consumeStartingAt(index + 1, desiredBacklogLoad, wayAheadBacklog)
-									val stageQueueAtPieceEnd = futureDemandConsumption.consumed
+									val productionNeededToSatisfyDownstreamDemand: PriorityQueue = priorityQueueDemandedByDownstream.except(loopState.backlog);
+									val wayAheadBacklog: PriorityQueue = loopState.backlog.except(priorityQueueDemandedByDownstream);
+									val futureDemandConsumption: Consumption[PriorityQueue] = trajectoryOfPriorityQueueDemandedByDownstream.consumeStartingAt(
+										index + 1,
+										desiredBacklogLoad,
+										wayAheadBacklog
+									);
+									val stageQueueAtPieceEnd = futureDemandConsumption.consumed;
 
-									val stagePower = loadDemandedByDownstream + desiredBacklogLoad - loopState.stateAtPieceStart.backlog.load
+									val stagePower = loadDemandedByDownstream + desiredBacklogLoad - loopState.backlog.load;
 
-									val upstreamQueue: PriorityQueue = productionNeededToSatisfyDownstreamDemand.mergedWith(stageQueueAtPieceEnd)
+									val upstreamQueue: PriorityQueue = productionNeededToSatisfyDownstreamDemand.mergedWith(stageQueueAtPieceEnd);
 
-									RequiredPowerAtPiece(stageQueueAtPieceEnd, stagePower, upstreamQueue)
+									RequiredPowerAtPiece(stageQueueAtPieceEnd, stagePower, upstreamQueue);
 
 
 								case CaseB(trajectoryOfFifoQueueDemandedByDownstream: Trajectory[FifoQueue]) =>
 									???
 							}
 
-						loopState.builder.addOne(requiredPowerAtPiece)
-						loopState
-					}
-					)
-					CaseA(buildTrajectory(y.builder.result()))
+					} (v => StageInitialState(v.upstreamDemand))
+
+					CaseA(requiredPowerTrajectory)
 
 				case CaseB(fifoStageInitialState) =>
 					???
 
 			}
-
-		}
 		)
 	}
 
@@ -196,8 +190,8 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 		def getUpstreamDemandTrajectoryOf(stage: Stage): Option[QueueTrajectory] = {
 			for stageStateTrajectory <- alreadyCalculatedStagesStates.get(stage) yield
 				stageStateTrajectory match {
-					case CaseA(x) => CaseA(x.map(_.upstreamDemand))
-					case CaseB(x) => CaseB(x.map(_.upstreamDemand))
+					case CaseA(x) => CaseA(x.map(_.upstreamDemand));
+					case CaseB(x) => CaseB(x.map(_.upstreamDemand));
 			}
 		}
 
@@ -212,21 +206,18 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 			case join2: Join2[?, ?] => getUpstreamDemandTrajectoryOf(join2.out.to.host)
 
 			case fork2: Fork2[?, ?] =>
-				val outADemandTrajectory: Option[QueueTrajectory] = getUpstreamDemandTrajectoryOf(fork2.outA.to.host)
-				val outBDemandTrajectory: Option[QueueTrajectory] = getUpstreamDemandTrajectoryOf(fork2.outB.to.host)
+				val outADemandTrajectory: Option[QueueTrajectory] = getUpstreamDemandTrajectoryOf(fork2.outA.to.host);
+				val outBDemandTrajectory: Option[QueueTrajectory] = getUpstreamDemandTrajectoryOf(fork2.outB.to.host);
 				(outADemandTrajectory, outBDemandTrajectory) match {
-					case (Some(CaseA(a)), Some(CaseA(b))) => Some(CaseA(a.combineWith(b)(_ ++ _)))
-					case (Some(CaseB(a)), Some(CaseB(b))) => Some(CaseB(a.combineWith(b)(_ ++ _)))
+					case (Some(CaseA(a)), Some(CaseA(b))) => Some(CaseA(a.combineWith(b)(_ ++ _)));
+					case (Some(CaseB(a)), Some(CaseB(b))) => Some(CaseB(a.combineWith(b)(_ ++ _)));
 					case _ => throw IllegalStateException(
 						s"stage=${stage.name}, outADemand=$outADemandTrajectory, outBDemand=$outBDemandTrajectory"
 					)
 				}
 		}
 
-		oQueueTrajectory.getOrElse(throw IllegalStateException(
-			s"stage=${stage.name}, alreadyCalculatedStagesStates=$alreadyCalculatedStagesStates"
-		)
-		)
+		oQueueTrajectory.getOrElse(throw IllegalStateException(s"stage=${stage.name}, alreadyCalculatedStagesStates=$alreadyCalculatedStagesStates"))
 	}
 
 }

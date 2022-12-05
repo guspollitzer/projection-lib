@@ -140,11 +140,37 @@ class StaggeredAlgebra private(
 
 	def numberOfPieces: Int = pieceEndingInstantByIndex.size
 
-	override def buildTrajectory[A: TypeId](wholeIntegralByPieceIndex: IterableOnce[A]): StaggeredTrajectory[A] = {
-		wholeIntegralByPieceIndex match {
-			case is: IndexedSeq[A] => new Eager(is)
-			case io => new Eager(io.iterator.toIndexedSeq)
+	override def buildTrajectory[A: TypeId](f: (pieceIndex: Int, pieceStart: Instant, pieceEnd: Instant) => A): Trajectory[A] = {
+		val builder = IndexedSeq.newBuilder[A]
+
+		@tailrec
+		def loop(index: Int, start: Instant): Unit = {
+			if index < pieceIndexByEndingInstant.size() then {
+				val end = pieceEndingInstantByIndex(index);
+				builder.addOne(f(index, start, end));
+				loop(index + 1, end);
+			}
 		}
+
+		loop(0, firstPieceStartingInstant);
+		new Eager(builder.result())
+	}
+
+	def buildTrajectory[S, A: TypeId](initialState: S)(valueBuilder: (state: S, index: Int, start: Instant, end: Instant) => A)(nextStateBuilder: A => S): StaggeredTrajectory[A] = {
+		val builder = IndexedSeq.newBuilder[A];
+
+		@tailrec
+		def loop(state: S, index: Int, start: Instant): Unit = {
+			if index < pieceEndingInstantByIndex.size then {
+				val end = pieceEndingInstantByIndex(index)
+				val value = valueBuilder(state, index, start, end)
+				builder.addOne(value)
+				loop(nextStateBuilder(value), index + 1, end)
+			}
+		}
+
+		loop(initialState, 0, firstPieceStartingInstant)
+		new Eager[A](builder.result())
 	}
 
 	override def combine[A, B, C: TypeId](ta: Trajectory[A], tb: Trajectory[B])(f: (A, B) => C): StaggeredTrajectory[C] = new LazyTwo(ta, tb)(f)
@@ -164,5 +190,4 @@ class StaggeredAlgebra private(
 		}
 		loop(initialState, 0, firstPieceStartingInstant)
 	}
-
 }

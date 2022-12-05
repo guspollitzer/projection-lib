@@ -104,29 +104,29 @@
     <option name="showModules" value="false" />
     <option name="showVisibilityIcons" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.go.format.on.save.advertiser.fired&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.go.formatter.settings.were.checked&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.go.migrated.go.modules.settings&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;scala_project_settings_configurable.last_selected_tab_index&quot;: &quot;0&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;configurable.group.language&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.go.format.on.save.advertiser.fired": "true",
+    "RunOnceActivity.go.formatter.settings.were.checked": "true",
+    "RunOnceActivity.go.migrated.go.modules.settings": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "go.import.settings.migrated": "true",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "scala_project_settings_configurable.last_selected_tab_index": "0",
+    "settings.editor.selected.configurable": "Errors"
   },
-  &quot;keyToStringList&quot;: {
-    &quot;GitStage.ChangesTree.GroupingKeys&quot;: [
-      &quot;directory&quot;,
-      &quot;module&quot;,
-      &quot;repository&quot;
+  "keyToStringList": {
+    "GitStage.ChangesTree.GroupingKeys": [
+      "directory",
+      "module",
+      "repository"
     ]
   }
-}</component>
+}]]></component>
   <component name="RunManager">
     <configuration name="Scala REPL" type="ScalaScriptConsoleRunConfiguration" factoryName="Scala Console" temporary="true" show_console_on_std_err="false" show_console_on_std_out="false">
       <module name="projection-lib" />
@@ -192,7 +192,7 @@
       <workItem from="1668899233941" duration="2173000" />
       <workItem from="1669552334964" duration="17125000" />
       <workItem from="1669638713463" duration="837000" />
-      <workItem from="1670024857482" duration="26450000" />
+      <workItem from="1670024857482" duration="40211000" />
     </task>
     <task id="LOCAL-00001" summary="Category from Priority to tuple of (Priority, Path) and all the consecuences.">
       <created>1668291279923</created>
@@ -257,7 +257,21 @@
       <option name="project" value="LOCAL" />
       <updated>1669448872878</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="WIP">
+      <created>1670121864536</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1670121864536</updated>
+    </task>
+    <task id="LOCAL-00011" summary="RequiredPowerCalculator:&#10;- In the calcRequiredPowerTrajectory method, swap the order of the loop nesting: stages in the outer loop and pieces in the inner one.">
+      <created>1670158085188</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1670158085188</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -285,7 +299,11 @@
     <MESSAGE value="Redo piecewise algebras" />
     <MESSAGE value="Adapt the requiered power calculator to the new algebra" />
     <MESSAGE value="Remove unnecessary type aliases.&#10;Add PiecewiseAlgebra.reduce&#10;Add Heap.total&#10;Add Queue.load&#10;Move `numberOfPieces` method from `Trajectory` to `Algebra`." />
-    <option name="LAST_COMMIT_MESSAGE" value="Remove unnecessary type aliases.&#10;Add PiecewiseAlgebra.reduce&#10;Add Heap.total&#10;Add Queue.load&#10;Move `numberOfPieces` method from `Trajectory` to `Algebra`." />
+    <MESSAGE value="WIP" />
+    <MESSAGE value="WIP 2" />
+    <MESSAGE value="RequiredPowerCalculator:&#10;- In the calcRequiredPowerTrajectory method, swap the order of the loop nesting: stages in the outer loop and pieces in the inner one." />
+    <MESSAGE value="PiecewiseAlgebra:&#10;- add a statefull trajectory builder&#10;RequiredPowerCalculator:&#10;- replace the reduce with the statefull trajectory builder." />
+    <option name="LAST_COMMIT_MESSAGE" value="PiecewiseAlgebra:&#10;- add a statefull trajectory builder&#10;RequiredPowerCalculator:&#10;- replace the reduce with the statefull trajectory builder." />
   </component>
   <component name="VgoProject">
     <integration-enabled>false</integration-enabled>
