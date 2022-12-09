@@ -13,7 +13,12 @@ import scala.jdk.StreamConverters.*
 
 type PriorityQueue = TreeMap[Priority, Heap]
 
+object PriorityQueue {
+	def from(treeMap: TreeMap[Priority, Heap]): PriorityQueue = treeMap
+}
+
 given QueueOps[PriorityQueue] with {
+
 	extension (thisQueue: PriorityQueue) {
 
 		def load: Quantity = thisQueue.view.values.map(heap => heap.total).sum

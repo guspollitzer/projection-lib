@@ -67,8 +67,8 @@ case class GraphMap[+A](closedGraph: ClosedGraph, values: IndexedSeq[A]) {
 			}
 		}
 
-		val oldValueByIndependentStage = for sink <- independentStages yield ValueAtStage(sink, this.get(sink))
-		val newValueByStage = loop(oldValueByIndependentStage, Nil, Map.empty)
+		val oldValueByStage = for stage <- closedGraph.stages yield ValueAtStage(stage, this.get(stage))
+		val newValueByStage = loop(oldValueByStage.toList, Nil, Map.empty)
 
 		GraphMap.fill(closedGraph)(newValueByStage.apply)
 	}

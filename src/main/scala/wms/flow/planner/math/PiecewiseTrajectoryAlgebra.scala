@@ -52,7 +52,7 @@ trait PiecewiseTrajectoryAlgebra[+A] {
 
 		def getPieceAt(index: Int): P[B]
 
-		def integrate(from: Instant, to: Instant): B
+		def integrate(from: Instant, to: Instant, extrapolate: Boolean): B
 
 		def combineWith[C: TypeId, D: TypeId](other: T[C])(f: (B, C) => D): T[D] = combine[B, C, D](self, other)(f)
 	}

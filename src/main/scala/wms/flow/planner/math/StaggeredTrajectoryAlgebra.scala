@@ -99,7 +99,7 @@ class StaggeredTrajectoryAlgebra[+A] private(
 			StepView[B](index)(wholeIntegralByStepIndex)
 		}
 
-		override def integrate(from: Instant, to: Instant): B = {
+		override def integrate(from: Instant, to: Instant, extrapolate: Boolean): B = {
 			assert(from <= to)
 
 			given concatOps: Concatenable[B] = opsSummoner.summonConcatenableFor[B]

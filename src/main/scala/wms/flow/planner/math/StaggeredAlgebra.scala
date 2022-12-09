@@ -13,13 +13,13 @@ import scala.IArray
 object StaggeredAlgebra {
 
 	case class FractionAndConcatOpsFor[A](fractionable: Fractionable[A], concatenable: Concatenable[A])
-		(using val typeMark: TypeId[A])
+		(using val typeId: TypeId[A])
 
 	class FractionAndConcatOpsSummoner(opsByType: FractionAndConcatOpsFor[?]*) {
 		def opsFor[A: TypeId]: FractionAndConcatOpsFor[A] = {
 			val typeMarkA = summon[TypeId[A]]
 			opsByType
-				.find(facof => facof.typeMark.equalsTo(typeMarkA))
+				.find(facof => facof.typeId.equalsTo(typeMarkA))
 				.getOrElse(throw new IllegalArgumentException(s"A Fractionable for $typeMarkA was not found."))
 				.asInstanceOf[FractionAndConcatOpsFor[A]]
 		}
@@ -57,9 +57,14 @@ class StaggeredAlgebra private(
 		}
 		)
 
+	def getStartOfPiece(pieceIndex: Int): Instant =
+		if pieceIndex == 0 then firstPieceStartingInstant
+		else if pieceIndex >= numberOfPieces then pieceEndingInstantByIndex(numberOfPieces - 1)
+			 else pieceEndingInstantByIndex(pieceIndex - 1)
+
 	abstract class StaggeredTrajectory[+A: TypeId] extends Trajectory[A] {
 
-		override def integrate(from: Instant, to: Instant): A = {
+		override def integrate(from: Instant, to: Instant, extrapolate: Boolean): A = {
 			assert(from <= to)
 
 			given concatOps: Concatenable[A] = opsSummoner.summonConcatenableFor[A]
@@ -67,38 +72,48 @@ class StaggeredAlgebra private(
 			given factionOps: Fractionable[A] = opsSummoner.summonFractionableFor[A]
 
 			@tailrec
-			def loop(pieceIndex: Int, fragmentStart: Instant, accum: A): A = {
-				if pieceIndex < 0 || numberOfPieces <= pieceIndex then throw new IllegalArgumentException(
-					s"The trajectory is not defined in some part of the interval: pieceIndex:$pieceIndex, from:$from, to:$to, firstPieceStartingInstant:$firstPieceStartingInstant, lastPieceEndingInstant:${getWholePieceIntegralAt(numberOfPieces-1)}"
-				)
-				val wholePieceIntegral = getWholePieceIntegralAt(pieceIndex)
-				val pieceStart = pieceEndingInstantByIndex(pieceIndex)
-				val pieceEnd = pieceEndingInstantByIndex(pieceIndex + 1)
-				if to <= pieceEnd
-				then {
-					val pieceIntegral = wholePieceIntegral.takeFraction((to - fragmentStart) / (pieceEnd - pieceStart))
-					accum ++ pieceIntegral
-				}
-				else {
-					val pieceIntegral =
-						if fragmentStart == pieceStart
-						then wholePieceIntegral
-						else wholePieceIntegral.takeFraction((pieceEnd - fragmentStart) / (pieceEnd - pieceStart))
-					loop(pieceIndex + 1, pieceStart, accum ++ pieceIntegral)
+			def loop(pieceIndex: Int, pieceStart: Instant, fragmentStart: Instant, accum: A): A = {
+				if extrapolate && pieceIndex == numberOfPieces then {
+					val pieceEnd = pieceStart
+					val lastPieceWholePieceIntegral = getWholePieceIntegralAt(numberOfPieces - 1)
+					accum ++ lastPieceWholePieceIntegral.takeFraction((to - fragmentStart)/(pieceEnd - getStartOfPiece(numberOfPieces - 1) ))
+				} else if pieceIndex < 0 || numberOfPieces <= pieceIndex then {
+					throw new IllegalArgumentException(
+						s"The trajectory is not defined in some part of the interval: pieceIndex:$pieceIndex, from:$from, to:$to, extrapolate:$extrapolate, firstPieceStartingInstant:$firstPieceStartingInstant, lastPieceEndingInstant:${getWholePieceIntegralAt(numberOfPieces-1)}"
+					)
+				} else {
+					val wholePieceIntegral = getWholePieceIntegralAt(pieceIndex)
+					val pieceEnd = pieceEndingInstantByIndex(pieceIndex)
+					if to <= pieceEnd
+					then {
+						val pieceIntegral = wholePieceIntegral.takeFraction((to - fragmentStart) / (pieceEnd - pieceStart))
+						accum ++ pieceIntegral;
+					}
+					else {
+						val pieceIntegral =
+							if fragmentStart == pieceStart
+							then wholePieceIntegral
+							else wholePieceIntegral.takeFraction((pieceEnd - fragmentStart) / (pieceEnd - pieceStart));
+						loop(pieceIndex + 1, pieceEnd, pieceEnd, accum ++ pieceIntegral);
+					}
 				}
 			}
 
-			val firstInvolvedPieceEntry = pieceIndexByEndingInstant.higherEntry(from)
-			val firstInvolvedPieceIndex =
-				if firstInvolvedPieceEntry == null
-				then numberOfPieces
-				else if from < firstPieceStartingInstant
-					 then -1
-					 else firstInvolvedPieceEntry.getValue
-			loop(firstInvolvedPieceIndex, from, concatOps.empty)
+			if numberOfPieces == 0 then concatOps.empty
+			else {
+				val firstInvolvedPieceEntry = pieceIndexByEndingInstant.higherEntry(from)
+				val firstInvolvedPieceIndex =
+					if firstInvolvedPieceEntry == null
+					then numberOfPieces
+					else if from < firstPieceStartingInstant
+						 then -1
+						 else firstInvolvedPieceEntry.getValue;
+				val firstInvolvedPieceStart = getStartOfPiece(firstInvolvedPieceIndex);
+				loop(firstInvolvedPieceIndex, firstInvolvedPieceStart, from, concatOps.empty)
+			}
 		}
 
-		override def map[B: TypeId](f: A => B): StaggeredTrajectory[B] = new LazyOne(this)(f)
+		override def map[B: TypeId](f: A => B): StaggeredTrajectory[B] = new MapOne(this)(f)
 
 		override def richMap[B: TypeId](f: (index: Int, startingInstant: Instant, endingInstant: Instant, wholePieceIntegral: A) => B): StaggeredTrajectory[B] = {
 			new RichOne(this)(f)
@@ -110,12 +125,17 @@ class StaggeredAlgebra private(
 		override def getWholePieceIntegralAt(index: Int): A = wholePieceIntegralByIndex(index)
 	}
 
-	protected class LazyOne[+A, +B: TypeId](base: Trajectory[A])(func: A => B) extends StaggeredTrajectory[B] {
+	protected class Lazy[+A: TypeId](func: (pieceIndex: Int) => A) extends StaggeredTrajectory[A] {
+
+		override def getWholePieceIntegralAt(index: Int): A = func(index)
+	}
+
+	protected class MapOne[+A, +B: TypeId](base: Trajectory[A])(func: A => B) extends StaggeredTrajectory[B] {
 
 		override def getWholePieceIntegralAt(index: Int): B = func(base.getWholePieceIntegralAt(index))
 	}
 
-	protected class LazyTwo[+A, +B, +C: TypeId](ta: Trajectory[A], tb: Trajectory[B])(biFunc: (A, B) => C) extends StaggeredTrajectory[C] {
+	protected class MapTwo[+A, +B, +C: TypeId](ta: Trajectory[A], tb: Trajectory[B])(biFunc: (A, B) => C) extends StaggeredTrajectory[C] {
 
 		override def getWholePieceIntegralAt(index: Int): C = biFunc(ta.getWholePieceIntegralAt(index), tb.getWholePieceIntegralAt(index))
 	}
@@ -140,20 +160,14 @@ class StaggeredAlgebra private(
 
 	def numberOfPieces: Int = pieceEndingInstantByIndex.size
 
-	override def buildTrajectory[A: TypeId](f: (pieceIndex: Int, pieceStart: Instant, pieceEnd: Instant) => A): Trajectory[A] = {
-		val builder = IndexedSeq.newBuilder[A]
+	def buildTrajectory[A: TypeId](f: (pieceIndex: Int) => A): Trajectory[A] = new Lazy[A](f)
 
-		@tailrec
-		def loop(index: Int, start: Instant): Unit = {
-			if index < pieceIndexByEndingInstant.size() then {
-				val end = pieceEndingInstantByIndex(index);
-				builder.addOne(f(index, start, end));
-				loop(index + 1, end);
-			}
-		}
-
-		loop(0, firstPieceStartingInstant);
-		new Eager(builder.result())
+	def buildTrajectory[A: TypeId](f: (pieceIndex: Int, pieceStart: Instant, pieceEnd: Instant) => A): Trajectory[A] = {
+		new Lazy[A](pieceIndex => {
+			val pieceStart = if pieceIndex == 0 then firstPieceStartingInstant else pieceEndingInstantByIndex(pieceIndex - 1)
+			val pieceEnd = pieceEndingInstantByIndex(pieceIndex)
+			f(pieceIndex, pieceStart, pieceEnd)
+		})
 	}
 
 	def buildTrajectory[S, A: TypeId](initialState: S)(valueBuilder: (state: S, index: Int, start: Instant, end: Instant) => A)(nextStateBuilder: A => S): StaggeredTrajectory[A] = {
@@ -173,7 +187,7 @@ class StaggeredAlgebra private(
 		new Eager[A](builder.result())
 	}
 
-	override def combine[A, B, C: TypeId](ta: Trajectory[A], tb: Trajectory[B])(f: (A, B) => C): StaggeredTrajectory[C] = new LazyTwo(ta, tb)(f)
+	override def combine[A, B, C: TypeId](ta: Trajectory[A], tb: Trajectory[B])(f: (A, B) => C): StaggeredTrajectory[C] = new MapTwo(ta, tb)(f)
 
 	override def richCombine[A, B, C: TypeId](ta: Trajectory[A], tb: Trajectory[B])(f: (index: Int, startingInstant: Instant, endingInstant: Instant, a: A, b: B) => C): StaggeredTrajectory[C] =
 		new RichTwo(ta, tb)(f)

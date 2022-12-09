@@ -15,7 +15,7 @@ trait PiecewiseAlgebra {
 		  * Valid for non integration-friendly trajectories.  */
 		def getPieceMeanAt(index: Int): A = getWholePieceIntegralAt(index)
 
-		def integrate(from: Instant, to: Instant): A
+		def integrate(from: Instant, to: Instant, extrapolate: Boolean): A
 
 		def map[B: TypeId](f: A => B): Trajectory[B]
 
@@ -32,6 +32,8 @@ trait PiecewiseAlgebra {
 
 	/** Applies the function `f` to the initialState and the first piece of this [[PiecewiseAlgebra]]. Then applies `f` to the result and the next piece. This loop continues until the last piece of the until predicate gives true. */
 	def reduceUntil[S](initialState: S, until: S => Boolean)(f: (state: S, index: Int, start: Instant, end: Instant) => S): S
+
+	def buildTrajectory[A: TypeId](f: (pieceIndex: Int) => A): Trajectory[A]
 
 	def buildTrajectory[A: TypeId](f: (pieceIndex: Int, pieceStart: Instant, pieceEnd: Instant) => A): Trajectory[A]
 

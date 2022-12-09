@@ -90,7 +90,11 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 
 	case class StageInitialState[+Q: QueueOps](backlog: Q)
 
+	type SIS = OneOf[StageInitialState[PriorityQueue], StageInitialState[FifoQueue]]
+
 	case class RequiredPowerAtPiece[+Q: QueueOps](backlogAtPieceEnd: Q, power: Quantity, upstreamDemand: Q)
+
+	type RPaP = OneOf[RequiredPowerAtPiece[PriorityQueue],RequiredPowerAtPiece[FifoQueue]]
 
 	given rpappq: TypeId[RequiredPowerAtPiece[PriorityQueue]] = new TypeId[RequiredPowerAtPiece[PriorityQueue]] {}
 	given rpapfq: TypeId[RequiredPowerAtPiece[FifoQueue]] = new TypeId[RequiredPowerAtPiece[FifoQueue]] {}
@@ -98,16 +102,16 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 
 	//	given TypeId[RequiredPowerAtPiece] = new TypeId[RequiredPowerAtPiece]{}
 
-	type StageStateTrajectory = OneOf[Trajectory[RequiredPowerAtPiece[PriorityQueue]], Trajectory[RequiredPowerAtPiece[FifoQueue]]]
+	type RequiredPowerTrajectory = OneOf[Trajectory[RequiredPowerAtPiece[PriorityQueue]], Trajectory[RequiredPowerAtPiece[FifoQueue]]]
 
 
 	def calcRequiredPowerTrajectory(
-		stateAtStartingInstant: GraphMap[OneOf[StageInitialState[PriorityQueue], StageInitialState[FifoQueue]]],
+		stateAtStartingInstant: GraphMap[SIS],
 		desiredBacklogAtEndingInstant: GraphMap[Trajectory[Duration]],
 		maxBacklogLoad: GraphMap[Int],
 		sinkByPath: Map[Path, Sink],
 		downstreamDemandTrajectory: Trajectory[PriorityQueue],
-	): GraphMap[StageStateTrajectory] = {
+	): GraphMap[RequiredPowerTrajectory] = {
 
 		/** Calculates the downstream demand trajectory corresponding to the specified sink based on the global downstream trajectory and the set of process paths that feed said sink.
 		  * Assumes that every path feeds one sink only. */
@@ -125,10 +129,10 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 			}
 		}
 
-		stateAtStartingInstant.calcUpward[StageStateTrajectory]((
+		stateAtStartingInstant.calcUpward[RequiredPowerTrajectory]((
 			stage: Stage,
-			stageInitialState: OneOf[StageInitialState[PriorityQueue], StageInitialState[FifoQueue]],
-			alreadyCalculated: Map[Stage, StageStateTrajectory]
+			stageInitialState: SIS,
+			alreadyCalculated: Map[Stage, RequiredPowerTrajectory]
 		) =>
 
 			val trajectoryOfQueueDemandedByDownstream: QueueTrajectory = getDownstreamDemand(stage, downStreamDemandTrajectoryOf, alreadyCalculated);
@@ -142,7 +146,7 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 							val desiredBacklogDuration: Duration = desiredBacklogDurationAtStage.getPieceMeanAt(index);
 							val desiredBacklogLoad: Quantity = scala.math.min(
 								maxBacklogLoad.get(stage),
-								trajectoryOfLoadDemandedByDownstream.integrate(end, end + desiredBacklogDuration)
+								trajectoryOfLoadDemandedByDownstream.integrate(end, end + desiredBacklogDuration, true)
 							);
 
 							trajectoryOfQueueDemandedByDownstream match {
@@ -170,7 +174,7 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 									???
 							}
 
-					} (v => StageInitialState(v.upstreamDemand))
+					} (requiredPowerAtPiece => StageInitialState(requiredPowerAtPiece.upstreamDemand))
 
 					CaseA(requiredPowerTrajectory)
 
@@ -184,7 +188,7 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 	inline private def getDownstreamDemand(
 		stage: Stage,
 		sinksDownstreamDemandTrajectoryGetter: Sink => Trajectory[PriorityQueue],
-		alreadyCalculatedStagesStates: Map[Stage, StageStateTrajectory],
+		alreadyCalculatedStagesStates: Map[Stage, RequiredPowerTrajectory],
 	): QueueTrajectory = {
 
 		def getUpstreamDemandTrajectoryOf(stage: Stage): Option[QueueTrajectory] = {
