@@ -135,6 +135,7 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 		) =>
 
 			val trajectoryOfQueueDemandedByDownstream: QueueTrajectory = getDownstreamDemand(stage, downStreamDemandTrajectoryOf, alreadyCalculated);
+			// TODO break the load down by path in order to calculate the productivity more precisely.
 			val trajectoryOfLoadDemandedByDownstream: Trajectory[Quantity] = trajectoryOfQueueDemandedByDownstream.toLoad;
 			val desiredBacklogDurationAtStage: Trajectory[Duration] = desiredBacklogAtEndingInstant.get(stage);
 
@@ -214,10 +215,19 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 				(outADemandTrajectory, outBDemandTrajectory) match {
 					case (Some(CaseA(a)), Some(CaseA(b))) => Some(CaseA(a.combineWith(b)(_ ++ _)));
 					case (Some(CaseB(a)), Some(CaseB(b))) => Some(CaseB(a.combineWith(b)(_ ++ _)));
-					case _ => throw IllegalStateException(
-						s"stage=${stage.name}, outADemand=$outADemandTrajectory, outBDemand=$outBDemandTrajectory"
-					)
+					case _ => throw IllegalStateException(s"stage=${stage.name}, outADemand=$outADemandTrajectory, outBDemand=$outBDemandTrajectory")
 				}
+
+			case nToM: NToM[?, ?] =>
+				nToM.outs
+					.map(out => getUpstreamDemandTrajectoryOf(out.to.host))
+					.reduce { (outADemandTrajectory, outBDemandTrajectory) =>
+						(outADemandTrajectory, outBDemandTrajectory) match {
+							case (Some(CaseA(a)), Some(CaseA(b))) => Some(CaseA(a.combineWith(b)(_ ++ _)));
+							case (Some(CaseB(a)), Some(CaseB(b))) => Some(CaseB(a.combineWith(b)(_ ++ _)));
+							case _ => throw IllegalStateException(s"stage=${stage.name}, out demand A=$outADemandTrajectory, out demand B=$outBDemandTrajectory")
+						}
+					}
 		}
 
 		oQueueTrajectory.getOrElse(throw IllegalStateException(s"stage=${stage.name}, alreadyCalculatedStagesStates=$alreadyCalculatedStagesStates"))

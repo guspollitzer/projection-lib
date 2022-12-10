@@ -15,20 +15,20 @@ object RequiredPowerCalculatorTest extends Properties("simple") {
 		builder => {
 			given ClosedGraph.Builder = builder
 
-			val wavingA = Source("wavingA")
-			val wavingB = Source("wavingB")
-			val wavesJoiner = Join2[PriorityQueue, PriorityQueue]("joiner")
-			val picking = Fork2[PriorityQueue, PriorityQueue]("picking")
+			val waving = Source("waving")
+			val buffering = Source("buffering")
+			val picking = NToM[PriorityQueue, PriorityQueue]("picking", 2, 2)
 			val sorting = Flow[PriorityQueue, PriorityQueue]("sorting")
+			val walling = Flow[PriorityQueue, PriorityQueue]("walling")
 			val packingNormal = Sink("packingNormal")
 			val packingWall = Sink("packingWall")
 
-			wavingA.out ~> wavesJoiner.inA
-			wavingB.out ~> wavesJoiner.inB
-			wavesJoiner.out ~> picking.in
-			picking.outA ~> packingNormal.in
-			picking.outB ~> sorting.in
-			sorting.out ~> packingWall.in
+			waving.out ~> picking.ins(0)
+			buffering.out ~> picking.ins(1)
+			picking.outs(0) ~> packingNormal.in
+			picking.outs(1) ~> sorting.in
+			sorting.out ~> walling.in
+			walling.out ~> packingWall.in
 		}
 	)
 

@@ -125,3 +125,20 @@ class Join2[A, B](val name: String)(using builder: ClosedGraph.Builder) extends 
 
 	builder.register(this)
 }
+
+class NToM[A, B](val name: String, numberOfInputs: Int, numberOfOutputs: Int)(using builder: ClosedGraph.Builder) extends Stage {
+	val ins: IndexedSeq[In[A]] = IndexedSeq.fill(numberOfInputs)(In())
+	val outs: IndexedSeq[Out[B]] = IndexedSeq.fill(numberOfOutputs)(Out())
+	val inPorts: Map[String, In[?]] = {
+		(for index <- 0 until numberOfInputs yield {
+			s"in${('A' + index).asInstanceOf[Char]}" -> ins(index)
+		}).toMap
+	}
+	val outPorts: Map[String, Out[?]] = {
+		(for index <- 0 until numberOfOutputs yield {
+			s"out${('A' + index).asInstanceOf[Char]}" -> outs(index)
+		}).toMap
+	}
+
+	builder.register(this)
+}
