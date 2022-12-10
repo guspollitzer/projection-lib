@@ -19,10 +19,10 @@ object TypeId {
 		id
 	}
 
-	given TypeId[Quantity] = new TypeId[Quantity]{}
+	given quantityTypeId: TypeId[Quantity] = new TypeId[Quantity]{}
 }
 
-trait TypeId[A] {
+trait TypeId[-A] {
 	val id: String = registerNew[A]
 
 	def equalsTo(that: TypeId[?]): Boolean = this.id == that.id

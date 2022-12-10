@@ -28,8 +28,6 @@ object StaggeredAlgebra {
 
 		def summonConcatenableFor[A: TypeId]: Concatenable[A] = opsFor[A].concatenable
 	}
-
-
 }
 
 import StaggeredAlgebra.*
@@ -38,14 +36,9 @@ class StaggeredAlgebra private(
 	val firstPieceStartingInstant: Instant,
 	pieceEndingInstantByIndex: IArray[Instant],
 	pieceIndexByEndingInstant: java.util.NavigableMap[Instant, Int]
-)(
-	using opsSummoner: FractionAndConcatOpsSummoner
-) extends PiecewiseAlgebra {
+)(using facOpsSummoner: FractionAndConcatOpsSummoner) extends PiecewiseAlgebra {
 
-	import StaggeredAlgebra.*
-
-
-	def this(firstPieceStartingInstant: Instant, pieceEndingInstantByIndex: IArray[Instant])(using opsSummoner: StaggeredAlgebra.FractionAndConcatOpsSummoner) =
+	def this(firstPieceStartingInstant: Instant, pieceEndingInstantByIndex: IArray[Instant])(using facOpsSummoner: FractionAndConcatOpsSummoner) =
 		this(
 		firstPieceStartingInstant: Instant,
 		pieceEndingInstantByIndex,
@@ -62,14 +55,14 @@ class StaggeredAlgebra private(
 		else if pieceIndex >= numberOfPieces then pieceEndingInstantByIndex(numberOfPieces - 1)
 			 else pieceEndingInstantByIndex(pieceIndex - 1)
 
-	abstract class StaggeredTrajectory[+A: TypeId] extends Trajectory[A] {
+	abstract class StaggeredTrajectory[+A] extends Trajectory[A] {
 
-		override def integrate(from: Instant, to: Instant, extrapolate: Boolean): A = {
+		override def integrate(from: Instant, to: Instant, extrapolate: Boolean)(using aTypeId: TypeId[A]): A = {
 			assert(from <= to)
 
-			given concatOps: Concatenable[A] = opsSummoner.summonConcatenableFor[A]
+			given concatOps: Concatenable[A] = facOpsSummoner.summonConcatenableFor[A]
 
-			given factionOps: Fractionable[A] = opsSummoner.summonFractionableFor[A]
+			given fractionOps: Fractionable[A] = facOpsSummoner.summonFractionableFor[A]
 
 			@tailrec
 			def loop(pieceIndex: Int, pieceStart: Instant, fragmentStart: Instant, accum: A): A = {
@@ -113,34 +106,34 @@ class StaggeredAlgebra private(
 			}
 		}
 
-		override def map[B: TypeId](f: A => B): StaggeredTrajectory[B] = new MapOne(this)(f)
+		override def map[B](f: A => B): StaggeredTrajectory[B] = new MapOne(this)(f)
 
-		override def richMap[B: TypeId](f: (index: Int, startingInstant: Instant, endingInstant: Instant, wholePieceIntegral: A) => B): StaggeredTrajectory[B] = {
+		override def richMap[B](f: (index: Int, startingInstant: Instant, endingInstant: Instant, wholePieceIntegral: A) => B): StaggeredTrajectory[B] = {
 			new RichOne(this)(f)
 		}
 	}
 
-	protected class Eager[+A: TypeId](wholePieceIntegralByIndex: IndexedSeq[A]) extends StaggeredTrajectory[A] {
+	protected class Eager[+A](wholePieceIntegralByIndex: IndexedSeq[A]) extends StaggeredTrajectory[A] {
 
 		override def getWholePieceIntegralAt(index: Int): A = wholePieceIntegralByIndex(index)
 	}
 
-	protected class Lazy[+A: TypeId](func: (pieceIndex: Int) => A) extends StaggeredTrajectory[A] {
+	protected class Lazy[+A](func: (pieceIndex: Int) => A) extends StaggeredTrajectory[A] {
 
 		override def getWholePieceIntegralAt(index: Int): A = func(index)
 	}
 
-	protected class MapOne[+A, +B: TypeId](base: Trajectory[A])(func: A => B) extends StaggeredTrajectory[B] {
+	protected class MapOne[+A, +B](base: Trajectory[A])(func: A => B) extends StaggeredTrajectory[B] {
 
 		override def getWholePieceIntegralAt(index: Int): B = func(base.getWholePieceIntegralAt(index))
 	}
 
-	protected class MapTwo[+A, +B, +C: TypeId](ta: Trajectory[A], tb: Trajectory[B])(biFunc: (A, B) => C) extends StaggeredTrajectory[C] {
+	protected class MapTwo[+A, +B, +C](ta: Trajectory[A], tb: Trajectory[B])(biFunc: (A, B) => C) extends StaggeredTrajectory[C] {
 
 		override def getWholePieceIntegralAt(index: Int): C = biFunc(ta.getWholePieceIntegralAt(index), tb.getWholePieceIntegralAt(index))
 	}
 
-	protected class RichOne[+A, +B: TypeId](base: Trajectory[A])(multiFunc: (index: Int, startingInstant: Instant, endingInstant: Instant, wholePieceIntegral: A) => B) extends StaggeredTrajectory[B] {
+	protected class RichOne[+A, +B](base: Trajectory[A])(multiFunc: (index: Int, startingInstant: Instant, endingInstant: Instant, wholePieceIntegral: A) => B) extends StaggeredTrajectory[B] {
 
 		override def getWholePieceIntegralAt(index: Int): B = {
 			val startingInstant = if index == 0 then firstPieceStartingInstant else pieceEndingInstantByIndex(index - 1)
@@ -149,7 +142,7 @@ class StaggeredAlgebra private(
 		}
 	}
 
-	protected class RichTwo[+A, +B, +C: TypeId](ta: Trajectory[A], tb: Trajectory[B])(multiFunc: (index: Int, startingInstant: Instant, endingInstant: Instant, a: A, b: B) => C) extends StaggeredTrajectory[C] {
+	protected class RichTwo[+A, +B, +C](ta: Trajectory[A], tb: Trajectory[B])(multiFunc: (index: Int, startingInstant: Instant, endingInstant: Instant, a: A, b: B) => C) extends StaggeredTrajectory[C] {
 
 		override def getWholePieceIntegralAt(index: Int): C = {
 			val startingInstant = if index == 0 then firstPieceStartingInstant else pieceEndingInstantByIndex(index - 1)
@@ -160,9 +153,9 @@ class StaggeredAlgebra private(
 
 	def numberOfPieces: Int = pieceEndingInstantByIndex.size
 
-	def buildTrajectory[A: TypeId](f: (pieceIndex: Int) => A): Trajectory[A] = new Lazy[A](f)
+	def buildTrajectory[A](f: (pieceIndex: Int) => A): Trajectory[A] = new Lazy[A](f)
 
-	def buildTrajectory[A: TypeId](f: (pieceIndex: Int, pieceStart: Instant, pieceEnd: Instant) => A): Trajectory[A] = {
+	def buildTrajectory[A](f: (pieceIndex: Int, pieceStart: Instant, pieceEnd: Instant) => A): Trajectory[A] = {
 		new Lazy[A](pieceIndex => {
 			val pieceStart = if pieceIndex == 0 then firstPieceStartingInstant else pieceEndingInstantByIndex(pieceIndex - 1)
 			val pieceEnd = pieceEndingInstantByIndex(pieceIndex)
@@ -170,7 +163,7 @@ class StaggeredAlgebra private(
 		})
 	}
 
-	def buildTrajectory[S, A: TypeId](initialState: S)(valueBuilder: (state: S, index: Int, start: Instant, end: Instant) => A)(nextStateBuilder: A => S): StaggeredTrajectory[A] = {
+	def buildTrajectory[S, A](initialState: S)(valueBuilder: (state: S, index: Int, start: Instant, end: Instant) => A)(nextStateBuilder: A => S): StaggeredTrajectory[A] = {
 		val builder = IndexedSeq.newBuilder[A];
 
 		@tailrec
@@ -187,9 +180,9 @@ class StaggeredAlgebra private(
 		new Eager[A](builder.result())
 	}
 
-	override def combine[A, B, C: TypeId](ta: Trajectory[A], tb: Trajectory[B])(f: (A, B) => C): StaggeredTrajectory[C] = new MapTwo(ta, tb)(f)
+	override def combine[A, B, C](ta: Trajectory[A], tb: Trajectory[B])(f: (A, B) => C): StaggeredTrajectory[C] = new MapTwo(ta, tb)(f)
 
-	override def richCombine[A, B, C: TypeId](ta: Trajectory[A], tb: Trajectory[B])(f: (index: Int, startingInstant: Instant, endingInstant: Instant, a: A, b: B) => C): StaggeredTrajectory[C] =
+	override def richCombine[A, B, C](ta: Trajectory[A], tb: Trajectory[B])(f: (index: Int, startingInstant: Instant, endingInstant: Instant, a: A, b: B) => C): StaggeredTrajectory[C] =
 		new RichTwo(ta, tb)(f)
 
 	override def reduceUntil[S](initialState: S, until: S => Boolean)(f: (state: S, index: Int, start: Instant, end: Instant) => S): S = {

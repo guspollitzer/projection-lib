@@ -42,19 +42,20 @@ object Grafo {
 
 		println(eClosedGraph)
 
-		given Fractionable[Quantity] with {
+		val quantityFractionable: Fractionable[Quantity] = new Fractionable[Quantity] {
 			extension (a: Quantity) def takeFraction(fraction: Quantity): Quantity = a * fraction
 		}
-		given Concatenable[Quantity] with {
-			def empty = 0
+
+		val quantityConcatenable: Concatenable[Quantity] = new Concatenable[Quantity] {
+			override def empty = 0
 
 			extension (a: Quantity) {
 				@targetName("concat")
-				def ++(b: Quantity) = a + b
+				def ++(b: Quantity): Quantity = a + b
 			}
 		}
 
-		val facForQuantity = FractionAndConcatOpsFor[Quantity](summon[Fractionable[Quantity]], summon[Concatenable[Quantity]])
+		val facForQuantity = FractionAndConcatOpsFor[Quantity](quantityFractionable, quantityConcatenable)
 
 		given pepe: FractionAndConcatOpsSummoner = new FractionAndConcatOpsSummoner(facForQuantity)
 

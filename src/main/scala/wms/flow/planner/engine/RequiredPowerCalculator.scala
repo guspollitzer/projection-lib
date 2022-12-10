@@ -8,7 +8,7 @@ import queue.{*, given}
 import time.*
 import util.{CaseA, CaseB, OneOf, TypeId}
 
-import scala.annotation.tailrec
+import scala.annotation.{tailrec, targetName}
 import scala.collection.{immutable, mutable}
 
 class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
@@ -86,7 +86,6 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 			loop(startingIndex, prefix)
 		}
 	}
-
 
 	case class StageInitialState[+Q: QueueOps](backlog: Q)
 
