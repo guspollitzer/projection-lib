@@ -15,13 +15,13 @@ object RequiredPowerCalculatorTest extends Properties("simple") {
 		builder => {
 			given ClosedGraph.Builder = builder
 
-			val waving = Source("waving")
-			val buffering = Source("buffering")
+			val waving = Source[PriorityQueue]("waving")
+			val buffering = Source[PriorityQueue]("buffering")
 			val picking = NToM[PriorityQueue, PriorityQueue]("picking", 2, 2)
 			val sorting = Flow[PriorityQueue, PriorityQueue]("sorting")
 			val walling = Flow[PriorityQueue, PriorityQueue]("walling")
-			val packingNormal = Sink("packingNormal")
-			val packingWall = Sink("packingWall")
+			val packingNormal = Sink[PriorityQueue]("packingNormal")
+			val packingWall = Sink[PriorityQueue]("packingWall")
 
 			waving.out ~> picking.ins(0)
 			buffering.out ~> picking.ins(1)
@@ -29,6 +29,24 @@ object RequiredPowerCalculatorTest extends Properties("simple") {
 			picking.outs(1) ~> sorting.in
 			sorting.out ~> walling.in
 			walling.out ~> packingWall.in
+		}
+	)
+
+
+	private val eInboundClosedGraph = ClosedGraph.build(
+		builder => {
+			given ClosedGraph.Builder = builder
+
+			val normalReceiving = Source[FifoQueue]("normal receiving")
+			val directReceiving = Source[FifoQueue]( "direct receiving")
+			val checkIn = Flow[FifoQueue, FifoQueue]("check-in")
+			val putAway = Join2[FifoQueue, FifoQueue]("putAway")
+			val stock = Sink[FifoQueue]("stock")
+
+			normalReceiving.out ~> checkIn.in
+			checkIn.out ~> putAway.inA
+			directReceiving.out ~> putAway.inB
+			putAway.out ~> stock.in
 		}
 	)
 

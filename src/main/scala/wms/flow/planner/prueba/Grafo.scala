@@ -10,6 +10,7 @@ import time.{*, given}
 import time.Instant.{*, given}
 import global.*
 import util.*
+import workflow.*
 
 import scala.annotation.targetName
 import scala.collection.immutable.TreeMap
@@ -26,11 +27,11 @@ object Grafo {
 			builder => {
 				given ClosedGraph.Builder = builder
 
-				val source = Source("source")
+				val source = Source[PriorityQueue]("source")
 				val fork = Fork2[PriorityQueue, FifoQueue]("fork")
 				val flow = Flow[FifoQueue, FifoQueue]("flow")
 				val join = Join2[FifoQueue, PriorityQueue]("join")
-				val sink = Sink("sink")
+				val sink = Sink[PriorityQueue]("sink")
 
 				source.out ~> fork.in
 				fork.outA ~> flow.in
@@ -57,7 +58,7 @@ object Grafo {
 
 		val facForQuantity = FractionAndConcatOpsFor[Quantity](quantityFractionable, quantityConcatenable)
 
-		given pepe: FractionAndConcatOpsSummoner = new FractionAndConcatOpsSummoner(facForQuantity)
+		given opsSummoner: FractionAndConcatOpsSummoner = new FractionAndConcatOpsSummoner(facForQuantity)
 
 		eClosedGraph.map {
 			closedGraph =>
@@ -69,8 +70,11 @@ object Grafo {
 				val stateAtStartingInstant: GraphMap[rpc.SIS] = GraphMap
 					.fill[rpc.SIS](closedGraph)(stage => CaseA(rpc.StageInitialState(PriorityQueue.from(TreeMap.empty[Priority, Heap]))))
 
-				val desiredBacklogAtEndingInstant: GraphMap[rpc.piecewiseAlgebra.Trajectory[Duration]] =
-					GraphMap.fill(closedGraph)(stage => rpc.piecewiseAlgebra.buildTrajectory(pieceIndex => 10f))
+				val desiredBacklogAtEndingInstant: GraphMap[rpc.piecewiseAlgebra.Trajectory[DesiredBacklog]] =
+					GraphMap.fill(closedGraph)(stage => rpc.piecewiseAlgebra.buildTrajectory(pieceIndex => stage match {
+						case source: Source[?] => Maximal
+						case _ => Minimal(10f)
+					}))
 
 				val maxBacklogLoad = GraphMap.fill(closedGraph)(stage => 10)
 				val theSink = closedGraph.getSinks(0)

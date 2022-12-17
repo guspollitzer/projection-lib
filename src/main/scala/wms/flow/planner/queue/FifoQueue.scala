@@ -36,7 +36,7 @@ given QueueOps[FifoQueue] with {
 
 					case head :: tail =>
 						val takenFromHead = head.consume(quantityToConsume)
-						if takenFromHead.excess == 0 then {
+						if takenFromHead.shortage == 0 then {
 							Consumption[FifoQueue](
 								takenFromHead.remaining :: tail,
 								(takenFromHead.consumed :: alreadyConsumed).reverse,
@@ -44,7 +44,7 @@ given QueueOps[FifoQueue] with {
 							)
 						} else {
 							assert(takenFromHead.consumed.nonEmpty)
-							tail.loop(takenFromHead.excess, takenFromHead.consumed :: alreadyConsumed)
+							tail.loop(takenFromHead.shortage, takenFromHead.consumed :: alreadyConsumed)
 						}
 				}
 			}

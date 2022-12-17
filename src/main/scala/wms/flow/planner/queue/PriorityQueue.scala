@@ -81,7 +81,7 @@ given QueueOps[PriorityQueue] with {
 							Consumption(thisQueue.updated(priority, x.remaining), alreadyConsumed + (priority -> x.consumed), 0)
 						} else {
 							assert(x.consumed == heap)
-							thisQueue.tail.loop(x.excess, alreadyConsumed + (priority -> heap))
+							thisQueue.tail.loop(x.shortage, alreadyConsumed + (priority -> heap))
 						}
 				}
 			}

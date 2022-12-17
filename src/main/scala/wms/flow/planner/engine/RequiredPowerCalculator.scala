@@ -7,47 +7,18 @@ import math.{Fractionable, PiecewiseAlgebra, StaggeredAlgebra, given}
 import queue.{*, given}
 import time.*
 import util.{CaseA, CaseB, OneOf, TypeId}
+import workflow.*
 
 import scala.annotation.{tailrec, targetName}
 import scala.collection.{immutable, mutable}
 
+object RequiredPowerCalculator {
+	val MAX_CONSECUTIVE_EMPTY_QUEUES = 24;
+}
+
 class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
-
+	import RequiredPowerCalculator.*
 	import piecewiseAlgebra.*
-
-	type Queue = OneOf[PriorityQueue, FifoQueue]
-
-	given TypeId[Queue] = new TypeId[Queue] {}
-
-	extension (thisQueue: Queue) {
-		def load: Quantity = thisQueue match {
-			case CaseA(priorityQueue) => priorityQueue.load;
-			case CaseB(fifoQueue) => fifoQueue.load;
-		}
-
-		def consumed(quantityToConsume: Quantity): OneOf[Consumption[PriorityQueue], Consumption[FifoQueue]] = thisQueue match {
-			case CaseA(priorityQueue) => CaseA(priorityQueue.consumed(quantityToConsume));
-			case CaseB(fifoQueue) => CaseB(fifoQueue.consumed(quantityToConsume));
-		}
-
-		//		def mergedWith(thatQueue: Queue, minimumLoad: Quantity): Queue = {
-		//			(thisQueue, thatQueue) match {
-		//				case (CaseA(thisPriorityQueue), CaseA(thatPriorityQueue)) => CaseA(thisPriorityQueue.mergedWith(thatPriorityQueue, minimumLoad))
-		//				case (CaseA(thisPriorityQueue), CaseB(thatFifoQueue)) =>  CaseA(thisPriorityQueue.mergedWith(thatFifoQueue, minimumLoad))
-		//				case (CaseB(thisFifoQueue), CaseA(thatPriorityQueue)) =>  CaseB(thisFifoQueue.mergedWith(thatPriorityQueue, minimumLoad))
-		//				case (CaseB(thisFifoQueue), CaseB(thatFifoQueue)) => CaseB(thisFifoQueue.mergedWith(thatFifoQueue, minimumLoad))
-		//			}
-		//		}
-
-		//		def minus(thatQueue: Queue): Queue = {
-		//			(thisQueue, thatQueue) match {
-		//				case (CaseA(thisPriorityQueue), CaseA(thatPriorityQueue)) => thisPriorityQueue.minus(thatPriorityQueue)
-		//				case (CaseA(thisPriorityQueue), CaseB(thatFifoQueue)) => thisPriorityQueue.minus(thatFifoQueue)
-		//				case (CaseB(thisFifoQueue), CaseA(thatPriorityQueue)) => thisFifoQueue.minus(thatPriorityQueue)
-		//				case (CaseB(thisFifoQueue), CaseB(thatFifoQueue)) => thisFifoQueue.minus(thatFifoQueue)
-		//			}
-		//		}
-	}
 
 	type QueueTrajectory = OneOf[Trajectory[PriorityQueue], Trajectory[FifoQueue]]
 
@@ -61,29 +32,31 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 			case CaseA(priorityTrajectory) => CaseA(priorityTrajectory.getWholePieceIntegralAt(index));
 			case CaseB(fifoTrajectory) => CaseB(fifoTrajectory.getWholePieceIntegralAt(index));
 		}
-
-
 	}
 
 	extension (trajectory: Trajectory[PriorityQueue]) {
-		/** Consumes the specified quantity from the queue resulting of concatenating the prefix and the queues that constitute this piecewise queue trajectory, in order, starting from the specified index.
+		/** Consumes the specified quantity from the queue resulting of concatenating the prefix and the queues that constitute this piecewise queue trajectory, in order, starting from the specified index; but including only the elements that were born during or before the specified limit.
 		  *
 		  * @param startingIndex the index of the first piece to concatenate after the prefix.
 		  * @param quantityToConsume the quantity to consume from said concatenation.
 		  * @param prefix the first queue of said queues concatenation.
 		  * @return the resulting consumption. */
-		def consumeStartingAt(startingIndex: Int, quantityToConsume: Quantity, prefix: PriorityQueue): Consumption[PriorityQueue] = {
+		def consumeExistingElemsStartingAt(startingIndex: Int, quantityToConsume: Quantity, prefix: PriorityQueue, maxBornPieceIndex: Int): Consumption[PriorityQueue] = {
 			@tailrec
-			def loop(index: Int, concatenation: PriorityQueue): Consumption[PriorityQueue] = {
+			def loop(index: Int, concatenation: PriorityQueue, consecutiveEmptyFollowingPiecesQueues: Int): Consumption[PriorityQueue] = {
 				val consumption = concatenation.consumed(quantityToConsume);
-				if consumption.excess == 0 || index >= numberOfPieces then consumption
+				if consumption.shortage == 0 || index >= numberOfPieces || consecutiveEmptyFollowingPiecesQueues > MAX_CONSECUTIVE_EMPTY_QUEUES then consumption
 				else {
+					val followingPieceQueue: PriorityQueue = for (priority, heap) <- trajectory.getWholePieceIntegralAt(index) yield {
+						// Can't consume what does not exist yet. So, include only the backlog that exists at the moment of the simulated consumption.
+						priority -> heap.view.filterKeys { category => category.bornPieceIndex <= maxBornPieceIndex }.toMap
+					}
 					// TODO aunque dudo que sea necesario, esto se podría optimizar sumando los `Consumption` en lugar de recalcularlo desde el comienzo cada vez.
-					loop(index + 1, concatenation.mergedWith(trajectory.getWholePieceIntegralAt(index)));
+					loop(index + 1, concatenation.mergedWith(followingPieceQueue), if followingPieceQueue.isEmpty then consecutiveEmptyFollowingPiecesQueues + 1 else 0);
 				}
 			}
 
-			loop(startingIndex, prefix)
+			loop(startingIndex, prefix, 0)
 		}
 	}
 
@@ -91,30 +64,21 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 
 	type SIS = OneOf[StageInitialState[PriorityQueue], StageInitialState[FifoQueue]]
 
-	case class RequiredPowerAtPiece[+Q: QueueOps](backlogAtPieceEnd: Q, power: Quantity, upstreamDemand: Q)
-
-	type RPaP = OneOf[RequiredPowerAtPiece[PriorityQueue],RequiredPowerAtPiece[FifoQueue]]
-
-	given rpappq: TypeId[RequiredPowerAtPiece[PriorityQueue]] = new TypeId[RequiredPowerAtPiece[PriorityQueue]] {}
-	given rpapfq: TypeId[RequiredPowerAtPiece[FifoQueue]] = new TypeId[RequiredPowerAtPiece[FifoQueue]] {}
-	given TypeId[RequiredPowerAtPiece[FifoQueue]] = new TypeId[RequiredPowerAtPiece[FifoQueue]] {}
-
-	//	given TypeId[RequiredPowerAtPiece] = new TypeId[RequiredPowerAtPiece]{}
+	case class RequiredPowerAtPiece[+Q: QueueOps](backlogAtPieceEnd: Q, power: Quantity, upstreamDemand: Q, shortage: Quantity)
 
 	type RequiredPowerTrajectory = OneOf[Trajectory[RequiredPowerAtPiece[PriorityQueue]], Trajectory[RequiredPowerAtPiece[FifoQueue]]]
 
-
 	def calcRequiredPowerTrajectory(
 		stateAtStartingInstant: GraphMap[SIS],
-		desiredBacklogAtEndingInstant: GraphMap[Trajectory[Duration]],
+		desiredBacklogAtEndingInstant: GraphMap[Trajectory[DesiredBacklog]],
 		maxBacklogLoad: GraphMap[Int],
-		sinkByPath: Map[Path, Sink],
+		sinkByPath: Map[Path, Sink[?]],
 		downstreamDemandTrajectory: Trajectory[PriorityQueue],
 	): GraphMap[RequiredPowerTrajectory] = {
 
 		/** Calculates the downstream demand trajectory corresponding to the specified sink based on the global downstream trajectory and the set of process paths that feed said sink.
 		  * Assumes that every path feeds one sink only. */
-		def downStreamDemandTrajectoryOf(sink: Sink): Trajectory[PriorityQueue] = {
+		def downStreamDemandTrajectoryOf(sink: Sink[?]): Trajectory[PriorityQueue] = {
 			for downstreamDemand <- downstreamDemandTrajectory yield {
 				val sinkDownStreamQueue =
 					for (priority, heap) <- downstreamDemand
@@ -128,26 +92,32 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 			}
 		}
 
-		stateAtStartingInstant.calcUpward[RequiredPowerTrajectory]((
+		stateAtStartingInstant.calcUpward[RequiredPowerTrajectory]( (
 			stage: Stage,
 			stageInitialState: SIS,
-			alreadyCalculated: Map[Stage, RequiredPowerTrajectory]
+			alreadyCalculatedStages: Map[Stage, RequiredPowerTrajectory]
 		) =>
+			val trajectoryOfQueueDemandedByDownstream: QueueTrajectory = getDownstreamDemand(stage, downStreamDemandTrajectoryOf, alreadyCalculatedStages);
 
-			val trajectoryOfQueueDemandedByDownstream: QueueTrajectory = getDownstreamDemand(stage, downStreamDemandTrajectoryOf, alreadyCalculated);
 			// TODO break the load down by path in order to calculate the productivity more precisely.
 			val trajectoryOfLoadDemandedByDownstream: Trajectory[Quantity] = trajectoryOfQueueDemandedByDownstream.toLoad;
-			val desiredBacklogDurationAtStage: Trajectory[Duration] = desiredBacklogAtEndingInstant.get(stage);
+			val desiredBacklogAtEndingInstantAtStage: Trajectory[DesiredBacklog] = desiredBacklogAtEndingInstant.get(stage);
 
 			stageInitialState match {
 				case CaseA(priorityStageInitialState) =>
 					val requiredPowerTrajectory = buildTrajectory[StageInitialState[PriorityQueue], RequiredPowerAtPiece[PriorityQueue]](priorityStageInitialState) {
 						(loopState, index, start, end) =>
-							val desiredBacklogDuration: Duration = desiredBacklogDurationAtStage.getPieceMeanAt(index);
-							val desiredBacklogLoad: Quantity = scala.math.min(
-								maxBacklogLoad.get(stage),
-								trajectoryOfLoadDemandedByDownstream.integrate(end, end + desiredBacklogDuration, true)
-							);
+
+							val desiredLoadAtEndingInstantAtStageAtPiece: Quantity = desiredBacklogAtEndingInstantAtStage.getPieceMeanAt(index) match {
+								case Maximal =>
+									maxBacklogLoad.get(stage);
+
+								case Minimal(duration) =>
+									scala.math.min(
+										maxBacklogLoad.get(stage),
+										trajectoryOfLoadDemandedByDownstream.integrate(end, end + duration, true)
+									);
+							}
 
 							trajectoryOfQueueDemandedByDownstream match {
 								case CaseA(trajectoryOfPriorityQueueDemandedByDownstream: Trajectory[PriorityQueue]) =>
@@ -156,18 +126,19 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 
 									val productionNeededToSatisfyDownstreamDemand: PriorityQueue = priorityQueueDemandedByDownstream.except(loopState.backlog);
 									val wayAheadBacklog: PriorityQueue = loopState.backlog.except(priorityQueueDemandedByDownstream);
-									val futureDemandConsumption: Consumption[PriorityQueue] = trajectoryOfPriorityQueueDemandedByDownstream.consumeStartingAt(
+									val futureDemandConsumption: Consumption[PriorityQueue] = trajectoryOfPriorityQueueDemandedByDownstream.consumeExistingElemsStartingAt(
 										index + 1,
-										desiredBacklogLoad,
-										wayAheadBacklog
+										desiredLoadAtEndingInstantAtStageAtPiece,
+										wayAheadBacklog,
+										index
 									);
 									val stageQueueAtPieceEnd = futureDemandConsumption.consumed;
 
-									val stagePower = loadDemandedByDownstream + desiredBacklogLoad - loopState.backlog.load;
+									val stagePower = loadDemandedByDownstream + desiredLoadAtEndingInstantAtStageAtPiece - loopState.backlog.load;
 
 									val upstreamQueue: PriorityQueue = productionNeededToSatisfyDownstreamDemand.mergedWith(stageQueueAtPieceEnd);
 
-									RequiredPowerAtPiece(stageQueueAtPieceEnd, stagePower, upstreamQueue);
+									RequiredPowerAtPiece(stageQueueAtPieceEnd, stagePower, upstreamQueue, futureDemandConsumption.shortage);
 
 
 								case CaseB(trajectoryOfFifoQueueDemandedByDownstream: Trajectory[FifoQueue]) =>
@@ -182,12 +153,13 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 					???
 
 			}
+
 		)
 	}
 
 	inline private def getDownstreamDemand(
 		stage: Stage,
-		sinksDownstreamDemandTrajectoryGetter: Sink => Trajectory[PriorityQueue],
+		sinksDownstreamDemandTrajectoryGetter: Sink[?] => Trajectory[PriorityQueue],
 		alreadyCalculatedStagesStates: Map[Stage, RequiredPowerTrajectory],
 	): QueueTrajectory = {
 
@@ -200,10 +172,10 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 		}
 
 		val oQueueTrajectory: Option[QueueTrajectory] = stage match {
-			case sink: Sink =>
+			case sink: Sink[?] =>
 				Some(CaseA(sinksDownstreamDemandTrajectoryGetter(sink)))
 
-			case source: Source => getUpstreamDemandTrajectoryOf(source.out.to.host)
+			case source: Source[?] => getUpstreamDemandTrajectoryOf(source.out.to.host)
 
 			case flow: Flow[?, ?] => getUpstreamDemandTrajectoryOf(flow.out.to.host)
 

@@ -81,16 +81,16 @@ trait Stage { self =>
 	
 }
 
-class Source(val name: String)(using builder: ClosedGraph.Builder) extends Stage {
-	val out: Out[PriorityQueue] = Out()
+class Source[A](val name: String)(using builder: ClosedGraph.Builder) extends Stage {
+	val out: Out[A] = Out()
 	val inPorts: Map[String, In[?]] = Map.empty
 	val outPorts: Map[String, Out[?]] = Map("out" -> out)
 
 	builder.register(this)
 }
 
-class Sink(val name: String)(using builder: ClosedGraph.Builder) extends Stage {
-	val in: In[PriorityQueue] = In()
+class Sink[A](val name: String)(using builder: ClosedGraph.Builder) extends Stage {
+	val in: In[A] = In()
 	val inPorts: Map[String, In[?]] = Map("in" -> in)
 	val outPorts: Map[String, Out[?]] = Map.empty
 
