@@ -28,16 +28,16 @@ object Grafo {
 				given ClosedGraph.Builder = builder
 
 				val source = Source[PriorityQueue]("source")
-				val fork = Fork2[PriorityQueue, FifoQueue]("fork")
+				val fork = NToM[PriorityQueue, FifoQueue]("fork", 1, 2)
 				val flow = Flow[FifoQueue, FifoQueue]("flow")
-				val join = Join2[FifoQueue, PriorityQueue]("join")
+				val join = NToM[FifoQueue, PriorityQueue]("join", 2, 1)
 				val sink = Sink[PriorityQueue]("sink")
 
-				source.out ~> fork.in
-				fork.outA ~> flow.in
-				flow.out ~> join.inA
-				fork.outB ~> join.inB
-				join.out ~> sink.in
+				source.out ~> fork.ins(0)
+				fork.outs(0) ~> flow.in
+				flow.out ~> join.ins(0)
+				fork.outs(1) ~> join.ins(1)
+				join.outs(0) ~> sink.in
 			}
 		)
 

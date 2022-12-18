@@ -40,13 +40,13 @@ object RequiredPowerCalculatorTest extends Properties("simple") {
 			val normalReceiving = Source[FifoQueue]("normal receiving")
 			val directReceiving = Source[FifoQueue]( "direct receiving")
 			val checkIn = Flow[FifoQueue, FifoQueue]("check-in")
-			val putAway = Join2[FifoQueue, FifoQueue]("putAway")
+			val putAway = NToM[FifoQueue, FifoQueue]("putAway", 2, 1)
 			val stock = Sink[FifoQueue]("stock")
 
 			normalReceiving.out ~> checkIn.in
-			checkIn.out ~> putAway.inA
-			directReceiving.out ~> putAway.inB
-			putAway.out ~> stock.in
+			checkIn.out ~> putAway.ins(0)
+			directReceiving.out ~> putAway.ins(1)
+			putAway.outs(0) ~> stock.in
 		}
 	)
 

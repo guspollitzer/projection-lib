@@ -179,17 +179,6 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 
 			case flow: Flow[?, ?] => getUpstreamDemandTrajectoryOf(flow.out.to.host)
 
-			case join2: Join2[?, ?] => getUpstreamDemandTrajectoryOf(join2.out.to.host)
-
-			case fork2: Fork2[?, ?] =>
-				val outADemandTrajectory: Option[QueueTrajectory] = getUpstreamDemandTrajectoryOf(fork2.outA.to.host);
-				val outBDemandTrajectory: Option[QueueTrajectory] = getUpstreamDemandTrajectoryOf(fork2.outB.to.host);
-				(outADemandTrajectory, outBDemandTrajectory) match {
-					case (Some(CaseA(a)), Some(CaseA(b))) => Some(CaseA(a.combineWith(b)(_ ++ _)));
-					case (Some(CaseB(a)), Some(CaseB(b))) => Some(CaseB(a.combineWith(b)(_ ++ _)));
-					case _ => throw IllegalStateException(s"stage=${stage.name}, outADemand=$outADemandTrajectory, outBDemand=$outBDemandTrajectory")
-				}
-
 			case nToM: NToM[?, ?] =>
 				nToM.outs
 					.map(out => getUpstreamDemandTrajectoryOf(out.to.host))

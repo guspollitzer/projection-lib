@@ -106,26 +106,6 @@ class Flow[A, B](val name: String)(using builder: ClosedGraph.Builder) extends S
 	builder.register(this)
 }
 
-class Fork2[A, B](val name: String)(using builder: ClosedGraph.Builder) extends Stage {
-	val in: In[A] = In()
-	val outA: Out[B] = Out()
-	val outB: Out[B] = Out()
-	val inPorts: Map[String, In[?]] = Map("in" -> in)
-	val outPorts: Map[String, Out[?]] = Map("outA" -> outA, "outB" -> outB)
-
-	builder.register(this)
-}
-
-class Join2[A, B](val name: String)(using builder: ClosedGraph.Builder) extends Stage {
-	val inA: In[A] = In()
-	val inB: In[A] = In()
-	val out: Out[B] = Out()
-	val inPorts: Map[String, In[?]] = Map("inA" -> inA, "inB" -> inB)
-	val outPorts: Map[String, Out[?]] = Map("out" -> out)
-
-	builder.register(this)
-}
-
 class NToM[A, B](val name: String, numberOfInputs: Int, numberOfOutputs: Int)(using builder: ClosedGraph.Builder) extends Stage {
 	val ins: IndexedSeq[In[A]] = IndexedSeq.fill(numberOfInputs)(In())
 	val outs: IndexedSeq[Out[B]] = IndexedSeq.fill(numberOfOutputs)(Out())
