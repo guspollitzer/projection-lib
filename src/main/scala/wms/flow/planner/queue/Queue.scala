@@ -11,17 +11,17 @@ type Queue = OneOf[PriorityQueue, FifoQueue]
 
 given QueueOps[Queue] with {
 	extension (thisQueue: Queue) {
-		def load: Quantity = thisQueue match {
+		override def load: Quantity = thisQueue match {
 			case CaseA(priorityQueue) => priorityQueue.load;
 			case CaseB(fifoQueue) => fifoQueue.load;
 		}
 
-		def appended(heapToAdd: Heap): Queue = thisQueue match {
+		override def appended(heapToAdd: Heap): Queue = thisQueue match {
 			case CaseA(priorityQueue) => CaseA(priorityQueue.appended(heapToAdd))
 			case CaseB(fifoQueue) => CaseB(fifoQueue.appended(heapToAdd))
 		}
 
-		def mergedWith(thatQueue: Queue): Queue = {
+		override def mergedWith(thatQueue: Queue): Queue = {
 			(thisQueue, thatQueue) match {
 				case (CaseA(thisPriorityQueue), CaseA(thatPriorityQueue)) => CaseA(thisPriorityQueue.mergedWith(thatPriorityQueue))
 				case (CaseA(thisPriorityQueue), CaseB(thatFifoQueue)) => ???
@@ -30,7 +30,7 @@ given QueueOps[Queue] with {
 			}
 		}
 
-		def except(thatQueue: Queue): Queue = {
+		override def except(thatQueue: Queue): Queue = {
 			(thisQueue, thatQueue) match {
 				case (CaseA(thisPriorityQueue), CaseA(thatPriorityQueue)) => CaseA(thisPriorityQueue.except(thatPriorityQueue))
 				case (CaseA(thisPriorityQueue), CaseB(thatFifoQueue)) => ???
@@ -39,9 +39,14 @@ given QueueOps[Queue] with {
 			}
 		}
 
-		def consumed(quantityToConsume: Quantity): Consumption[Queue] = thisQueue match {
+		override def consumed(quantityToConsume: Quantity): Consumption[Queue] = thisQueue match {
 			case CaseA(priorityQueue) => priorityQueue.consumed(quantityToConsume).map(CaseA(_));
 			case CaseB(fifoQueue) => fifoQueue.consumed(quantityToConsume).map(CaseB(_));
+		}
+
+		override def filterByCategory(predicate: Category => Boolean): Queue = thisQueue match {
+			case CaseA(priorityQueue) => CaseA(priorityQueue.filterByCategory(predicate))
+			case CaseB(fifoQueue) => CaseB(fifoQueue.filterByCategory(predicate))
 		}
 
 	}

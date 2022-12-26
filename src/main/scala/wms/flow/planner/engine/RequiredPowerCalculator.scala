@@ -72,13 +72,13 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 		stateAtStartingInstant: GraphMap[SIS],
 		desiredBacklogAtEndingInstant: GraphMap[Trajectory[DesiredBacklog]],
 		maxBacklogLoad: GraphMap[Int],
-		sinkByPath: Map[Path, Sink[?]],
+		sinkByPath: Map[Path, SinkN[?]],
 		downstreamDemandTrajectory: Trajectory[PriorityQueue],
 	): GraphMap[RequiredPowerTrajectory] = {
 
 		/** Calculates the downstream demand trajectory corresponding to the specified sink based on the global downstream trajectory and the set of process paths that feed said sink.
 		  * Assumes that every path feeds one sink only. */
-		def downStreamDemandTrajectoryOf(sink: Sink[?]): Trajectory[PriorityQueue] = {
+		def downStreamDemandTrajectoryOf(sink: SinkN[?]): Trajectory[PriorityQueue] = {
 			for downstreamDemand <- downstreamDemandTrajectory yield {
 				val sinkDownStreamQueue =
 					for (priority, heap) <- downstreamDemand
@@ -159,7 +159,7 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 
 	private def getDownstreamDemand(
 		stage: Stage,
-		sinksDownstreamDemandTrajectoryGetter: Sink[?] => Trajectory[PriorityQueue],
+		sinksDownstreamDemandTrajectoryGetter: SinkN[?] => Trajectory[PriorityQueue],
 		alreadyCalculatedStagesStates: Map[Stage, RequiredPowerTrajectory],
 	): QueueTrajectory = {
 
@@ -172,15 +172,11 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 		}
 
 		val oQueueTrajectory: Option[QueueTrajectory] = stage match {
-			case sink: Sink[?] =>
+			case sink: SinkN[?] =>
 				Some(CaseA(sinksDownstreamDemandTrajectoryGetter(sink)))
 
-			case source: Source[?] => getUpstreamDemandTrajectoryOf(source.out.to.host)
-
-			case flow: Flow[?, ?] => getUpstreamDemandTrajectoryOf(flow.out.to.host)
-
-			case nToM: NToM[?, ?] =>
-				nToM.outs
+			case fork: Fork[?] =>
+				fork.outs
 					.map(out => getUpstreamDemandTrajectoryOf(out.to.host))
 					.reduce { (outADemandTrajectory, outBDemandTrajectory) =>
 						(outADemandTrajectory, outBDemandTrajectory) match {

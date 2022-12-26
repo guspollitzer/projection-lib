@@ -4,14 +4,17 @@ package queue
 import global.{Category, Quantity}
 import math.Fractionable
 
-import scala.jdk.StreamConverters._
-import scala.collection.immutable.{Map, HashMap}
+import scala.jdk.StreamConverters.*
+import scala.collection.immutable.{HashMap, Map}
+import scala.collection.MapView
 
 type Heap = Map[Category, Quantity]
 
 extension (thisHeap: Heap) {
 
 	def total: Quantity = thisHeap.view.values.sum
+	
+	def filteredByCategory(f: Category => Boolean): Heap = thisHeap.view.filterKeys(f).toMap
 
 	def mixedWith(thatHeap: Heap): Heap = {
 		HashMap.from(thisHeap).merged(HashMap.from(thatHeap))((thisEntry, thatEntry) => {
@@ -59,7 +62,6 @@ extension (thisHeap: Heap) {
 			builder.result()
 		}
 	}
-
 }
 
 given EmptyAble[Heap] with {

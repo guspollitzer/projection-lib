@@ -21,9 +21,14 @@ given QueueOps[PriorityQueue] with {
 
 	extension (thisQueue: PriorityQueue) {
 
-		def load: Quantity = thisQueue.view.values.map(heap => heap.total).sum
+		override def load: Quantity = thisQueue.view.values.map(heap => heap.total).sum
 
-		def appended(heapToAdd: Heap): PriorityQueue = {
+		override def filterByCategory(predicate: Category => Boolean): PriorityQueue = thisQueue.map {
+			(priority, heap) => priority -> heap.filteredByCategory(predicate)
+		}
+
+
+		override def appended(heapToAdd: Heap): PriorityQueue = {
 			var workingMap = thisQueue
 			for (category, quantityToAdd) <- heapToAdd do {
 				val newHeapAtPriority: Heap = workingMap.get(category.priority) match {
@@ -35,7 +40,7 @@ given QueueOps[PriorityQueue] with {
 			workingMap
 		}
 
-		def mergedWith(thatQueue: PriorityQueue): PriorityQueue = {
+		override def mergedWith(thatQueue: PriorityQueue): PriorityQueue = {
 			if thatQueue.isEmpty then thisQueue
 			else if thisQueue.isEmpty then thatQueue
 			else {
@@ -45,7 +50,7 @@ given QueueOps[PriorityQueue] with {
 			}
 		}
 
-		def except(thatQueue: PriorityQueue): PriorityQueue = {
+		override def except(thatQueue: PriorityQueue): PriorityQueue = {
 			if thatQueue.isEmpty then thisQueue
 			else {
 				val builder = TreeMap.newBuilder[Priority, Heap]
@@ -61,7 +66,7 @@ given QueueOps[PriorityQueue] with {
 			}
 		}
 
-		def consumed(quantityToConsume: Quantity): Consumption[PriorityQueue] = {
+		override def consumed(quantityToConsume: Quantity): Consumption[PriorityQueue] = {
 			loop(quantityToConsume, TreeMap.empty)
 		}
 

@@ -35,6 +35,6 @@ object ClosedGraph {
 
 /** A closed directed acyclic graph. With "closed" we mean: without any arrow coming from the outside nor going to the outside. */
 class ClosedGraph private[ClosedGraph](val stages: IndexedSeq[Stage]) {
-	def getSinks: IndexedSeq[Sink[?]] = stages.collect { case s: Sink[?] => s }
-	def getSources: IndexedSeq[Source[?]] = stages.collect { case s: Source[?] => s }
+	def getSinks: IndexedSeq[SinkN[?]] = stages.collect { case s: SinkN[?] => s }
+	def getSources: IndexedSeq[SourceN[?]] = stages.collect { case s: SourceN[?] => s }
 }

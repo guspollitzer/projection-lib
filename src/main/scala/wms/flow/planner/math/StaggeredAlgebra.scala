@@ -163,7 +163,7 @@ class StaggeredAlgebra private(
 		})
 	}
 
-	def buildTrajectory[S, A](initialState: S)(valueBuilder: (state: S, index: Int, start: Instant, end: Instant) => A)(nextStateBuilder: A => S): StaggeredTrajectory[A] = {
+	def buildTrajectory[S, A](initialState: S)(valueBuilder: (state: S, index: Int, start: Instant, end: Instant) => A)(nextPieceInitialStateBuilder: A => S): StaggeredTrajectory[A] = {
 		val builder = IndexedSeq.newBuilder[A];
 
 		@tailrec
@@ -172,7 +172,7 @@ class StaggeredAlgebra private(
 				val end = pieceEndingInstantByIndex(index)
 				val value = valueBuilder(state, index, start, end)
 				builder.addOne(value)
-				loop(nextStateBuilder(value), index + 1, end)
+				loop(nextPieceInitialStateBuilder(value), index + 1, end)
 			}
 		}
 

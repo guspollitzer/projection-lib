@@ -1,7 +1,7 @@
 package wms.flow.planner
 package queue
 
-import global.Quantity
+import global.{Quantity, Category}
 import queue.{total, Heap}
 import util.TypeId
 import wms.flow.planner.math.Fractionable
@@ -13,15 +13,17 @@ type FifoQueue = List[Heap]
 given QueueOps[FifoQueue] with {
 	extension (queue: FifoQueue) {
 
-		def load: Quantity = queue.view.map[Quantity](h => h.total).sum
+		override def load: Quantity = queue.view.map[Quantity](h => h.total).sum
 
-		def appended(heap: Heap): FifoQueue = queue.appended(heap)
+		override def filterByCategory(predicate: Category => Boolean): FifoQueue = queue.map(heap => heap.filteredByCategory(predicate))
+
+		override def appended(heap: Heap): FifoQueue = queue.appended(heap)
+
+		override def mergedWith(thatQueue: FifoQueue): FifoQueue = queue ++ thatQueue
+
+		override def except(thatQueue: FifoQueue): FifoQueue	= queue
 		
-		def mergedWith(thatQueue: FifoQueue): FifoQueue = queue ++ thatQueue
-		
-		def except(thatQueue: FifoQueue): FifoQueue	= queue
-		
-		def consumed(quantityToConsume: Quantity): Consumption[FifoQueue] = {
+		override def consumed(quantityToConsume: Quantity): Consumption[FifoQueue] = {
 			assert(quantityToConsume >= 0)
 			loop(quantityToConsume, Nil)
 		}

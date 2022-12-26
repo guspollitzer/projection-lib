@@ -38,7 +38,7 @@ trait PiecewiseAlgebra {
 
 	def buildTrajectory[A](f: (pieceIndex: Int, pieceStart: Instant, pieceEnd: Instant) => A): Trajectory[A]
 
-	def buildTrajectory[S, A](initialState: S)(valueBuilder: (state: S, index: Int, start: Instant, end: Instant) => A)(nextStateBuilder: A => S): Trajectory[A]
+	def buildTrajectory[S, A](initialState: S)(valueBuilder: (state: S, index: Int, start: Instant, end: Instant) => A)(nextPieceInitialStateBuilder: A => S): Trajectory[A]
 
 	def combine[A, B, C](ta: Trajectory[A], tb: Trajectory[B])(f: (A, B) => C): Trajectory[C]
 
