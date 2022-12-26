@@ -157,7 +157,7 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 		)
 	}
 
-	inline private def getDownstreamDemand(
+	private def getDownstreamDemand(
 		stage: Stage,
 		sinksDownstreamDemandTrajectoryGetter: Sink[?] => Trajectory[PriorityQueue],
 		alreadyCalculatedStagesStates: Map[Stage, RequiredPowerTrajectory],

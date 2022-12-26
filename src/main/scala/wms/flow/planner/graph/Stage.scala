@@ -30,7 +30,8 @@ object Stage {
 
 import wms.flow.planner.graph.Stage.*
 
-trait Stage { self =>
+/** A stage of a graph. */
+sealed trait Stage { self =>
 
 	class In[A] private[graph] extends InPort[A](self) {
 		private[graph] var _from: OutPort[A] = _
@@ -81,44 +82,54 @@ trait Stage { self =>
 	
 }
 
-class Source[A](val name: String)(using builder: ClosedGraph.Builder) extends Stage {
-	val out: Out[A] = Out()
-	val inPorts: Map[String, In[?]] = Map.empty
-	val outPorts: Map[String, Out[?]] = Map("out" -> out)
-
-	builder.register(this)
-}
-
-class Sink[A](val name: String)(using builder: ClosedGraph.Builder) extends Stage {
-	val in: In[A] = In()
-	val inPorts: Map[String, In[?]] = Map("in" -> in)
-	val outPorts: Map[String, Out[?]] = Map.empty
-
-	builder.register(this)
-}
-
-class Flow[A, B](val name: String)(using builder: ClosedGraph.Builder) extends Stage {
-	val in: In[A] = In()
-	val out: Out[B] = Out()
-	val inPorts: Map[String, In[?]] = Map("in" -> in)
-	val outPorts: Map[String, Out[?]] = Map("out" -> out)
-
-	builder.register(this)
-}
-
-class NToM[A, B](val name: String, numberOfInputs: Int, numberOfOutputs: Int)(using builder: ClosedGraph.Builder) extends Stage {
-	val ins: IndexedSeq[In[A]] = IndexedSeq.fill(numberOfInputs)(In())
+/** [[Fork]] is a plugin-trait which implements all the [[Stage]]'s output logic. */
+trait Fork[B](numberOfOutputs: Int) { stage: Stage =>
 	val outs: IndexedSeq[Out[B]] = IndexedSeq.fill(numberOfOutputs)(Out())
-	val inPorts: Map[String, In[?]] = {
-		(for index <- 0 until numberOfInputs yield {
-			s"in${('A' + index).asInstanceOf[Char]}" -> ins(index)
-		}).toMap
-	}
-	val outPorts: Map[String, Out[?]] = {
+	override val outPorts: Map[String, Out[?]] = {
 		(for index <- 0 until numberOfOutputs yield {
 			s"out${('A' + index).asInstanceOf[Char]}" -> outs(index)
 		}).toMap
 	}
+}
+
+/** [[Join]] is a plugin-trait which implements all the [[Stage]]'s input logic. */
+trait Join[A](numberOfInputs: Int) { stage: Stage =>
+	val ins: IndexedSeq[In[A]] = IndexedSeq.fill(numberOfInputs)(In());
+	override val inPorts: Map[String, In[?]] = {
+		(for index <- 0 until numberOfInputs yield {
+			s"in${('A' + index).asInstanceOf[Char]}" -> ins(index)
+		}).toMap
+	}
+}
+
+
+class SourceN[B](val name: String, numberOfOutputs: Int)(using builder: ClosedGraph.Builder) extends Stage, Fork[B](numberOfOutputs) {
+	val inPorts: Map[String, In[?]] = Map.empty;
 
 	builder.register(this)
+}
+
+class SinkN[A](val name: String, numberOfInputs: Int)(using builder: ClosedGraph.Builder) extends Stage, Join[A](numberOfInputs) {
+	val outPorts: Map[String, Out[?]] = Map.empty;
+
+	builder.register(this)
+}
+
+class NToM[A, B](val name: String, numberOfInputs: Int, numberOfOutputs: Int)(using builder: ClosedGraph.Builder) extends Stage, Join[A](numberOfInputs), Fork[B](numberOfOutputs) {
+
+	builder.register(this)
+}
+
+
+class Source[A](name: String)(using builder: ClosedGraph.Builder) extends SourceN[A](name, 1) {
+	def out: Out[A] = outs(0);
+}
+
+class Sink[A](name: String)(using builder: ClosedGraph.Builder) extends SinkN[A](name, 1) {
+	def in: In[A] = ins(0);
+}
+
+class Flow[A, B](name: String)(using builder: ClosedGraph.Builder) extends NToM[A, B](name, 1, 1) {
+	def in: In[A] = ins(0)
+	def out: Out[B] = outs(0)
 }

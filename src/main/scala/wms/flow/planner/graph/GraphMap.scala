@@ -9,6 +9,7 @@ object GraphMap {
 	private case class ValueAtStage[T](stage: Stage, value: T)
 }
 
+/** A map whose keys are all the stages of a [[ClosedGraph]] and the values are of the specified type. */
 case class GraphMap[+A](closedGraph: ClosedGraph, values: IndexedSeq[A]) {
 	assert(values.size == closedGraph.stages.size)
 
