@@ -12,17 +12,18 @@ object Simulator {
 	case class Log(processed: Queue, backlogAtEndingInstant: Queue, shortage: Quantity)
 }
 
-class Simulator(val piecewiseAlgebra: PiecewiseAlgebra) {
+class Simulator(val piecewiseAlgebra: PiecewiseAlgebra, val closedGraph: ClosedGraph) {
 
 	import piecewiseAlgebra.*
+	import closedGraph.*
 	import Simulator.*
 
 	def simulate(
-		initialBacklog: GraphMap[Queue],
+		initialBacklog: Mapping[Queue],
 		upstreamTrajectory: Trajectory[Queue],
-		powerTrajectory: Trajectory[GraphMap[Quantity]],
+		powerTrajectory: Trajectory[Mapping[Quantity]],
 		sourceByPath: Map[Path, Source[?]]
-	): Trajectory[GraphMap[Log]] = {
+	): Trajectory[Mapping[Log]] = {
 
 		def upstreamTrajectoryFor(source: SourceN[?]): Trajectory[Queue] = {
 			for queue <- upstreamTrajectory yield {
@@ -35,13 +36,13 @@ class Simulator(val piecewiseAlgebra: PiecewiseAlgebra) {
 	}
 
 	def simulate(
-		initialBacklog: GraphMap[Queue],
+		initialBacklog: Mapping[Queue],
 		upstreamTrajectoryBySource: SourceN[?] => Trajectory[Queue],
-		powerTrajectory: Trajectory[GraphMap[Quantity]],
-	): Trajectory[GraphMap[Log]] = {
+		powerTrajectory: Trajectory[Mapping[Quantity]],
+	): Trajectory[Mapping[Log]] = {
 
-		piecewiseAlgebra.buildTrajectory[GraphMap[Queue], GraphMap[Log]](initialBacklog) {
-			(backlogAtStart: GraphMap[Queue], pieceIndex: Int, start: Instant, end: Instant) =>
+		piecewiseAlgebra.buildTrajectory[Mapping[Queue], Mapping[Log]](initialBacklog) {
+			(backlogAtStart: Mapping[Queue], pieceIndex: Int, start: Instant, end: Instant) =>
 
 				def getUpstreamPush(
 					stage: Stage,

@@ -16,9 +16,10 @@ object RequiredPowerCalculator {
 	val MAX_CONSECUTIVE_EMPTY_QUEUES = 24;
 }
 
-class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
+class RequiredPowerCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val piecewiseAlgebra: PA, val closedGraph: CG) {
 	import RequiredPowerCalculator.*
 	import piecewiseAlgebra.*
+	import closedGraph.*
 
 	type QueueTrajectory = OneOf[Trajectory[PriorityQueue], Trajectory[FifoQueue]]
 
@@ -69,12 +70,12 @@ class RequiredPowerCalculator(val piecewiseAlgebra: PiecewiseAlgebra) {
 	type RequiredPowerTrajectory = OneOf[Trajectory[RequiredPowerAtPiece[PriorityQueue]], Trajectory[RequiredPowerAtPiece[FifoQueue]]]
 
 	def calcRequiredPowerTrajectory(
-		stateAtStartingInstant: GraphMap[SIS],
-		desiredBacklogAtEndingInstant: GraphMap[Trajectory[DesiredBacklog]],
-		maxBacklogLoad: GraphMap[Int],
+		stateAtStartingInstant: Mapping[SIS],
+		desiredBacklogAtEndingInstant: Mapping[Trajectory[DesiredBacklog]],
+		maxBacklogLoad: Mapping[Int],
 		sinkByPath: Map[Path, SinkN[?]],
 		downstreamDemandTrajectory: Trajectory[PriorityQueue],
-	): GraphMap[RequiredPowerTrajectory] = {
+	): Mapping[RequiredPowerTrajectory] = {
 
 		/** Calculates the downstream demand trajectory corresponding to the specified sink based on the global downstream trajectory and the set of process paths that feed said sink.
 		  * Assumes that every path feeds one sink only. */

@@ -65,22 +65,22 @@ object Grafo {
 
 				val pieceEndingInstantByIndex = IArray.tabulate[Instant](3)(i => i + 1f);
 				val algebra = new StaggeredAlgebra(0f, pieceEndingInstantByIndex);
-				val rpc = new RequiredPowerCalculator(algebra);
+				val rpc = new RequiredPowerCalculator[algebra.type, closedGraph.type](algebra, closedGraph);
 
-				val stateAtStartingInstant: GraphMap[rpc.SIS] = GraphMap
-					.fill[rpc.SIS](closedGraph)(stage => CaseA(rpc.StageInitialState(PriorityQueue.from(TreeMap.empty[Priority, Heap]))))
+				val stateAtStartingInstant: closedGraph.Mapping[rpc.SIS] = closedGraph
+					.createMapping[rpc.SIS](stage => CaseA(rpc.StageInitialState(PriorityQueue.from(TreeMap.empty[Priority, Heap]))))
 
-				val desiredBacklogAtEndingInstant: GraphMap[rpc.piecewiseAlgebra.Trajectory[DesiredBacklog]] =
-					GraphMap.fill(closedGraph)(stage => rpc.piecewiseAlgebra.buildTrajectory(pieceIndex => stage match {
+				val desiredBacklogAtEndingInstant: closedGraph.Mapping[algebra.Trajectory[DesiredBacklog]] =
+					closedGraph.createMapping(stage => algebra.buildTrajectory(pieceIndex => stage match {
 						case source: Source[?] => Maximal
 						case _ => Minimal(10f)
 					}))
 
-				val maxBacklogLoad = GraphMap.fill(closedGraph)(stage => 10)
+				val maxBacklogLoad = closedGraph.createMapping(stage => 10)
 				val theSink = closedGraph.getSinks(0)
 				val sinkByPath = Map(Path.A -> theSink, Path.B -> theSink, Path.C -> theSink)
 
-				val downstreamDemandTrajectory = rpc.piecewiseAlgebra.buildTrajectory(pieceIndex => PriorityQueue.from(TreeMap.empty[Priority, Heap]))
+				val downstreamDemandTrajectory = algebra.buildTrajectory(pieceIndex => PriorityQueue.from(TreeMap.empty[Priority, Heap]))
 				val x = rpc.calcRequiredPowerTrajectory(
 					stateAtStartingInstant,
 					desiredBacklogAtEndingInstant,

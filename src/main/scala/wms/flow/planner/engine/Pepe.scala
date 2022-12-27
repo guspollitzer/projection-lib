@@ -6,7 +6,6 @@ import scala.collection.immutable.SortedMap
 import graph.Stage
 import resource.Money
 import time.Instant
-import graph.GraphMap
 
 trait Plan {
 	def withIncreasedPowerAt(instant: Instant): PlanChange
