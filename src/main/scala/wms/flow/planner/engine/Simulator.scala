@@ -19,9 +19,9 @@ class Simulator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val piecewiseAlgebra:
 		initialBacklog: Mapping[Queue],
 		upstreamTrajectoryBySource: SourceN[?] => Trajectory[Queue],
 		powerTrajectory: Trajectory[Mapping[Quantity]],
-	): Trajectory[Mapping[PieceBacklogCalculator.Log]] = {
+	): Trajectory[Mapping[PieceBacklogCalculator.CalculatedBacklog]] = {
 
-		piecewiseAlgebra.buildTrajectory[Mapping[Queue], Mapping[PieceBacklogCalculator.Log]](initialBacklog) {
+		piecewiseAlgebra.buildTrajectory[Mapping[Queue], Mapping[PieceBacklogCalculator.CalculatedBacklog]](initialBacklog) {
 			(backlogAtStart: Mapping[Queue], pieceIndex: Int, start: Instant, end: Instant) =>
 
 				val power = powerTrajectory.getWholePieceIntegralAt(pieceIndex);

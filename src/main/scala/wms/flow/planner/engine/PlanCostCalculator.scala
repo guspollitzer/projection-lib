@@ -15,10 +15,10 @@ class PlanCostCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 	val piecewiseAlgebra: PA,
 	val closedGraph: CG
 ) {
-	import piecewiseAlgebra.*
 	import closedGraph.*
+	import piecewiseAlgebra.*
 
-	case class Log(pieceCost: Money, accumulatedCost: Money, backlogLog: Mapping[PieceBacklogCalculator.Log])
+	case class Log(pieceCost: Money, accumulatedCost: Money, backlogLog: Mapping[PieceBacklogCalculator.CalculatedBacklog])
 
 	private val pieceBacklogCalculator = new PieceBacklogCalculator[closedGraph.type](closedGraph);
 	private val pieceCostCalculator = new PieceCostCalculator[closedGraph.type](closedGraph);
