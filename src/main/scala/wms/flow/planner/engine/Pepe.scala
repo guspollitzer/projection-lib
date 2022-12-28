@@ -26,10 +26,6 @@ trait PlanChange {
 	def changed: Plan
 }
 
-trait CostCalculator {
-	def calcAbsoluteCost(plan: Plan): Money
-	def calcChangeCost(change: PlanChange): Money
-}
 
 
 //case class Backlog(queueByStage: GraphMap[Queue])

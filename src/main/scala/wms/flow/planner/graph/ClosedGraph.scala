@@ -38,25 +38,47 @@ object ClosedGraph {
 }
 
 /** A closed directed acyclic graph. With "closed" we mean: without any arrow coming from the outside nor going to the outside. */
-class ClosedGraph private[ClosedGraph](val stages: IndexedSeq[Stage]) { closedGraph =>
+class ClosedGraph private[ClosedGraph](val stages: IndexedSeq[Stage]) {
+	closedGraph =>
+
 	import ClosedGraph.*
 
 	def getSinks: IndexedSeq[SinkN[?]] = stages.collect { case s: SinkN[?] => s }
+
 	def getSources: IndexedSeq[SourceN[?]] = stages.collect { case s: SourceN[?] => s }
 
 	/** Creates a new [[Mapping]] that associates every stage of this [[ClosedGraph]] to the result of applying the received function to the corresponding stage */
 	def createMapping[A](f: Stage => A): Mapping[A] = new Mapping[A](closedGraph.stages.map(f))
 
+	/** Combines two [[Mapping]]s
+	  *
+	  * @return a new [[Mapping]] in which, for every stage s, its associated value is {{{ f(ma.get(s), mb.get(s)) }}} */
+	def combine2Mappings[A, B, C](ma: Mapping[A], mb: Mapping[B])(f: (A, B) => C): Mapping[C] = {
+		val cValues = for i <- stages.indices yield f(ma.values(i), mb.values(i));
+		Mapping(cValues);
+	}
+
+	/** Combines three [[Mapping]]s
+	  *
+	  * @return a new [[Mapping]] in which, for every stage s, its associated value is {{{ f(ma.get(s), mb.get(s), mc.get(s)) }}} */
+	def combine3Mappings[A, B, C, D](ma: Mapping[A], mb: Mapping[B], mc: Mapping[C])(f: (A, B, C) => D): Mapping[D] = {
+		val dValues = for i <- stages.indices yield f(ma.values(i), mb.values(i), mc.values(i));
+		Mapping(dValues);
+	}
+
+
 	/** A map whose keys are all the stages of this [[ClosedGraph]] instance and the values are of the specified type. */
 	case class Mapping[+A](values: IndexedSeq[A]) {
-		assert(values.size == closedGraph.stages.size)
+		assert(values.size == closedGraph.stages.size);
 
 		def get(stage: Stage): A = values.apply(stage.ordinal)
 
 		def map[B](f: (Stage, A) => B): Mapping[B] = {
-			val mappedValues = for index <- closedGraph.stages.indices yield f(closedGraph.stages(index), values(index))
+			val mappedValues = for index <- closedGraph.stages.indices yield f(closedGraph.stages(index), values(index));
 			Mapping(mappedValues)
 		}
+
+		def mapValues[B](f: A => B): Mapping[B] = map { (_, a) => f(a) }
 
 		/** Creates a new [[Mapping]] whose values are calculated applying the function `f` on each value of this instance,
 		  * starting with the [[Sink]] stages and continuing with the stages that feed the already calculated stages. */
@@ -95,11 +117,7 @@ class ClosedGraph private[ClosedGraph](val stages: IndexedSeq[Stage]) { closedGr
 						if dependencies.exists(stage => !alreadyCalculated.contains(stage))
 						then loop(tail, head :: tried, alreadyCalculated)
 						else {
-							val b = f(
-								head.stage,
-								head.value,
-								alreadyCalculated
-							)
+							val b = f(head.stage, head.value, alreadyCalculated)
 							loop(tail, tried, alreadyCalculated + (head.stage -> b))
 						}
 				}
