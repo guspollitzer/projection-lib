@@ -4,10 +4,11 @@ package queue
 import global.{Category, Priority, Quantity}
 import math.Fractionable
 import util.TypeId
+import time.*
 
 import scala.annotation.{tailrec, targetName}
 import scala.collection.immutable.TreeMap
-import scala.collection.mutable
+import scala.collection.{mutable, MapView}
 import scala.jdk.CollectionConverters.*
 import scala.jdk.StreamConverters.*
 
@@ -22,6 +23,16 @@ given QueueOps[PriorityQueue] with {
 	extension (thisQueue: PriorityQueue) {
 
 		override def load: Quantity = thisQueue.view.values.map(heap => heap.total).sum
+
+		override def heapIterator: Iterator[Heap] = thisQueue.iterator.map(_._2);
+
+		override def quantityAtCategoryIterator: Iterator[(Category, Quantity)] = {
+			for {
+				heap <- thisQueue.valuesIterator
+				(category, quantity) <- heap.iterator
+			}
+			yield category -> quantity
+		}
 
 		override def filterByCategory(predicate: Category => Boolean): PriorityQueue = thisQueue.map {
 			(priority, heap) => priority -> heap.filteredByCategory(predicate)
@@ -42,8 +53,9 @@ given QueueOps[PriorityQueue] with {
 
 		override def mergedWith(thatQueue: PriorityQueue): PriorityQueue = {
 			if thatQueue.isEmpty then thisQueue
-			else if thisQueue.isEmpty then thatQueue
-			else {
+			else if thisQueue.isEmpty then {
+				thatQueue
+			} else {
 				val collector = new java.util.HashMap(thisQueue.asJava)
 				for (priority, thatHeap) <- thatQueue do collector.merge(priority, thatHeap, (a, b) => a.mixedWith(b))
 				TreeMap.from(collector.asScala)
@@ -109,5 +121,5 @@ given Fractionable[PriorityQueue] with {
 		pq.map((priority, heap) => priority -> heap.takeFraction(fraction))
 }
 
-given TypeId[PriorityQueue] = new TypeId[PriorityQueue]{}
+given TypeId[PriorityQueue] = new TypeId[PriorityQueue] {}
 

@@ -1,11 +1,12 @@
 package wms.flow.planner
 package queue
 
-import util.*
 import global.*
 import math.Fractionable
-import scala.annotation.targetName
+import time.*
+import util.*
 
+import scala.annotation.targetName
 
 type Queue = OneOf[PriorityQueue, FifoQueue]
 
@@ -16,6 +17,15 @@ given QueueOps[Queue] with {
 			case CaseB(fifoQueue) => fifoQueue.load;
 		}
 
+		override def heapIterator: Iterator[Heap] = thisQueue match {
+			case CaseA(priorityQueue) => priorityQueue.heapIterator
+			case CaseB(fifoQueue) => fifoQueue.heapIterator
+		}
+
+		override def quantityAtCategoryIterator: Iterator[(Category, Quantity)] = thisQueue match {
+			case CaseA(priorityQueue) => priorityQueue.quantityAtCategoryIterator
+			case CaseB(fifoQueue) => fifoQueue.quantityAtCategoryIterator
+		}
 		override def appended(heapToAdd: Heap): Queue = thisQueue match {
 			case CaseA(priorityQueue) => CaseA(priorityQueue.appended(heapToAdd))
 			case CaseB(fifoQueue) => CaseB(fifoQueue.appended(heapToAdd))
@@ -48,7 +58,6 @@ given QueueOps[Queue] with {
 			case CaseA(priorityQueue) => CaseA(priorityQueue.filterByCategory(predicate))
 			case CaseB(fifoQueue) => CaseB(fifoQueue.filterByCategory(predicate))
 		}
-
 	}
 }
 

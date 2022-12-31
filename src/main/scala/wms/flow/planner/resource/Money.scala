@@ -8,8 +8,7 @@ opaque type Money = Double
 val ZERO_MONEY: Money = 0d
 
 extension (a: Money) {
-	@targetName("plus")
-	def +(b: Money): Money = a + b
-	@targetName("minus")
-	def -(b: Money): Money = a - b
+	def plus(b: Money): Money = a + b;
+	def minus(b: Money): Money = a - b;
+	def multipliedBy(factor: Double): Money = a * factor;
 }

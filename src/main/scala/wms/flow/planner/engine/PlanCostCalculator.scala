@@ -14,6 +14,8 @@ import workflow.*
 class PlanCostCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 	val piecewiseAlgebra: PA,
 	val closedGraph: CG
+)(
+	val sinkCostParams: Map[SinkN[?], PieceCostCalculator.SinkParams]
 ) {
 	import closedGraph.*
 	import piecewiseAlgebra.*
@@ -21,7 +23,7 @@ class PlanCostCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 	case class Log(pieceCost: Money, accumulatedCost: Money, backlogLog: Mapping[PieceBacklogCalculator.CalculatedBacklog])
 
 	private val pieceBacklogCalculator = new PieceBacklogCalculator[closedGraph.type](closedGraph);
-	private val pieceCostCalculator = new PieceCostCalculator[closedGraph.type](closedGraph);
+	private val pieceCostCalculator = new PieceCostCalculator[closedGraph.type](closedGraph)(sinkCostParams);
 
 	def calc(
 		initialBacklog: Mapping[Queue],
@@ -59,11 +61,11 @@ class PlanCostCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 							desiredBacklogAtEndingInstantAtStage.getWholePieceIntegralAt(pieceIndex)
 						)
 				}
-				val cost = pieceCostCalculator.calc(piecewiseAlgebra.firstPieceStartingInstant, start, end, graphInfo);
+				val cost = pieceCostCalculator.calcBacklogCost(piecewiseAlgebra.firstPieceStartingInstant, start, end, graphInfo);
 
 				Log(cost, ZERO_MONEY /*TODO*/, backlogLog)
 		} {
-			log => log.backlogLog.mapValues(_.backlogAtEnd)
+			log => log.backlogLog.map(_.backlogAtEnd)
 		}
 	}
 }

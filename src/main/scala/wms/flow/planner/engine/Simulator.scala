@@ -28,7 +28,7 @@ class Simulator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val piecewiseAlgebra:
 
 				pieceBacklogCalculator.calc(backlogAtStart, power)(source => upstreamTrajectoryBySource(source).getWholePieceIntegralAt(pieceIndex))
 		} {
-			logMapping => logMapping.mapValues(_.backlogAtEnd)
+			logMapping => logMapping.map(_.backlogAtEnd)
 		}
 	}
 

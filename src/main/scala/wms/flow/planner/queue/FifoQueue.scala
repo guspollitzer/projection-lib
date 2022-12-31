@@ -1,28 +1,39 @@
 package wms.flow.planner
 package queue
 
-import global.{Quantity, Category}
+import global.{Category, Quantity}
+import math.Fractionable
 import queue.{total, Heap}
+import time.*
 import util.TypeId
-import wms.flow.planner.math.Fractionable
 
 import scala.annotation.{tailrec, targetName}
 
 type FifoQueue = List[Heap]
 
 given QueueOps[FifoQueue] with {
-	extension (queue: FifoQueue) {
+	extension (thisQueue: FifoQueue) {
 
-		override def load: Quantity = queue.view.map[Quantity](h => h.total).sum
+		override def load: Quantity = thisQueue.view.map[Quantity](h => h.total).sum
 
-		override def filterByCategory(predicate: Category => Boolean): FifoQueue = queue.map(heap => heap.filteredByCategory(predicate))
+		override def heapIterator: Iterator[Heap] = thisQueue.iterator;
 
-		override def appended(heap: Heap): FifoQueue = queue.appended(heap)
+		override def quantityAtCategoryIterator: Iterator[(Category, Quantity)] = {
+			for {
+				heap <- thisQueue.iterator
+				(category, quantity) <- heap.iterator
+			}
+			yield category -> quantity
+		}
 
-		override def mergedWith(thatQueue: FifoQueue): FifoQueue = queue ++ thatQueue
+		override def filterByCategory(predicate: Category => Boolean): FifoQueue = thisQueue.map(heap => heap.filteredByCategory(predicate))
 
-		override def except(thatQueue: FifoQueue): FifoQueue	= queue
-		
+		override def appended(heap: Heap): FifoQueue = thisQueue.appended(heap)
+
+		override def mergedWith(thatQueue: FifoQueue): FifoQueue = thisQueue ++ thatQueue
+
+		override def except(thatQueue: FifoQueue): FifoQueue = thisQueue
+
 		override def consumed(quantityToConsume: Quantity): Consumption[FifoQueue] = {
 			assert(quantityToConsume >= 0)
 			loop(quantityToConsume, Nil)
@@ -31,9 +42,9 @@ given QueueOps[FifoQueue] with {
 		@tailrec
 		private def loop(quantityToConsume: Quantity, alreadyConsumed: List[Heap]): Consumption[FifoQueue] = {
 			if quantityToConsume == 0 then {
-				Consumption(queue, alreadyConsumed.reverse, 0)
+				Consumption(thisQueue, alreadyConsumed.reverse, 0)
 			} else {
-				queue match {
+				thisQueue match {
 					case Nil => Consumption(Nil, alreadyConsumed.reverse, quantityToConsume)
 
 					case head :: tail =>

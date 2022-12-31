@@ -38,7 +38,7 @@ object ClosedGraph {
 }
 
 /** A closed directed acyclic graph. With "closed" we mean: without any arrow coming from the outside nor going to the outside. */
-class ClosedGraph private[ClosedGraph](val stages: IndexedSeq[Stage]) {
+class ClosedGraph private[ClosedGraph](stages: IndexedSeq[Stage]) {
 	closedGraph =>
 
 	import ClosedGraph.*
@@ -73,12 +73,17 @@ class ClosedGraph private[ClosedGraph](val stages: IndexedSeq[Stage]) {
 
 		def get(stage: Stage): A = values.apply(stage.ordinal)
 
-		def map[B](f: (Stage, A) => B): Mapping[B] = {
-			val mappedValues = for index <- closedGraph.stages.indices yield f(closedGraph.stages(index), values(index));
-			Mapping(mappedValues)
-		}
+		def map[B](f: A => B): Mapping[B] = Mapping(values.map(f))
 
-		def mapValues[B](f: A => B): Mapping[B] = map { (_, a) => f(a) }
+		def mapWithStage[B](f: (Stage, A) => B): Mapping[B] = Mapping(stages.map(stage => f(stage, values(stage.ordinal))))
+
+		def foreach(f: A => Unit): Unit = values.foreach(f)
+
+		def forEachWithStage(f: (Stage, A) => Unit): Unit = stages.foreach { stage => f(stage, values(stage.ordinal)) }
+
+		def iterator: Iterator[A] = values.iterator
+
+		def iteratorWithStage: Iterator[(Stage, A)] = stages.iterator.map { stage => (stage, values(stage.ordinal)) }
 
 		/** Creates a new [[Mapping]] whose values are calculated applying the function `f` on each value of this instance,
 		  * starting with the [[Sink]] stages and continuing with the stages that feed the already calculated stages. */
