@@ -43,6 +43,7 @@ class PlanCostCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 		powerTrajectory: Trajectory[Mapping[Quantity]],
 		desiredBacklogAtEndingInstant: Mapping[Trajectory[DesiredBacklog]],
 	): Trajectory[Log] = {
+		var accumulatedCost: Money = ZERO_MONEY;
 
 		buildTrajectory[Mapping[Queue], Log](initialBacklog) {
 			(backlogAtStart: Mapping[Queue], pieceIndex: Int, start: Instant, end: Instant) =>
@@ -62,8 +63,8 @@ class PlanCostCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 						)
 				}
 				val cost = pieceCostCalculator.calcBacklogCost(piecewiseAlgebra.firstPieceStartingInstant, start, end, graphInfo);
-
-				Log(cost, ZERO_MONEY /*TODO*/, backlogLog)
+				accumulatedCost = accumulatedCost.plus(cost);
+				Log(cost, accumulatedCost, backlogLog)
 		} {
 			log => log.backlogLog.map(_.backlogAtEnd)
 		}
