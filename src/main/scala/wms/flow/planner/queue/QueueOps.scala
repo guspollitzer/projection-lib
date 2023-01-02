@@ -18,8 +18,8 @@ trait QueueOps[Q] {
 		def mergedWith(thatQueue: Q): Q
 		def except(thatQueue: Q): Q
 		def consumed(quantity: Quantity): Consumption[Q]
-		def walkConsumptionTimeDistribution[S](consumptionStart: Instant, consumptionEnd: Instant, initialState: S)
-			(walker: (fragmentStart: Instant, fragmentEnd: Instant, heap: Heap, heapLoad: Quantity, accumulatedLoad: Quantity, state: S) => S)
+		def travelConsumptionTimeDistribution[S](consumptionStart: Instant, consumptionEnd: Instant, initialState: S)
+			(traveler: (fragmentStart: Instant, fragmentEnd: Instant, heap: Heap, heapLoad: Quantity, accumulatedLoad: Quantity, state: S) => S)
 		: S = {
 			val durationPerElement = (consumptionEnd - consumptionStart) / load;
 			val iterator = heapIterator;
@@ -31,7 +31,7 @@ trait QueueOps[Q] {
 				val heapLoad = heap.total;
 				accumulatedLoad += heapLoad;
 				val end = consumptionStart + durationPerElement * accumulatedLoad;
-				state = walker(start, end, heap, heapLoad, accumulatedLoad, state);
+				state = traveler(start, end, heap, heapLoad, accumulatedLoad, state);
 				start = end
 			}
 			assert(scala.math.abs(start - consumptionEnd) < (consumptionEnd - consumptionStart) / 1e6)
