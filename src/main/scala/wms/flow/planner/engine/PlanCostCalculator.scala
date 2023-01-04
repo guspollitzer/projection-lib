@@ -11,16 +11,26 @@ import util.*
 import workflow.*
 
 
+object PlanCostCalculator {
+	trait PowerPlan[CG <: ClosedGraph](val closedGraph: CG) {
+		import closedGraph.*
+		def getPowerAt(pieceIndex: Int): Mapping[Quantity]
+
+		def getCostAt(pieceIndex: Int): Mapping[Money]
+	}
+}
+
 class PlanCostCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 	val piecewiseAlgebra: PA,
 	val closedGraph: CG
 )(
 	val sinkCostParams: Map[SinkN[?], PieceCostCalculator.SinkParams]
 ) {
+	import PlanCostCalculator.*
 	import closedGraph.*
 	import piecewiseAlgebra.*
 
-	case class Log(pieceCost: Money, accumulatedCost: Money, backlogLog: Mapping[PieceBacklogCalculator.CalculatedBacklog])
+	case class Log(powerCost: Mapping[Money], expirationCostBySink: Map[SinkN[?], Money], accumulatedExpirationCost: Money, backlogLog: Mapping[PieceBacklogCalculator.CalculatedBacklog])
 
 	private val pieceBacklogCalculator = new PieceBacklogCalculator[closedGraph.type](closedGraph);
 	private val pieceCostCalculator = new PieceCostCalculator[closedGraph.type](closedGraph)(sinkCostParams);
@@ -28,45 +38,34 @@ class PlanCostCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 	def calc(
 		initialBacklog: Mapping[Queue],
 		upstreamTrajectory: Trajectory[Queue],
-		powerTrajectory: Trajectory[Mapping[Quantity]],
-		desiredBacklogAtEndingInstant: Mapping[Trajectory[DesiredBacklog]],
+		powerPlan: PowerPlan[closedGraph.type],
 		sourceByPath: Map[Path, Source[?]]
 	): Trajectory[Log] = {
 		val upstreamTools = new UpstreamTools[piecewiseAlgebra.type](piecewiseAlgebra);
 		val upstreamTrajectoryFor = upstreamTools.buildTrajectoryBySourceGetter(upstreamTrajectory, sourceByPath);
-		calc(initialBacklog, upstreamTrajectoryFor, powerTrajectory, desiredBacklogAtEndingInstant);
+		calc(initialBacklog, upstreamTrajectoryFor, powerPlan);
 	}
 
 	def calc(
 		initialBacklog: Mapping[Queue],
 		upstreamTrajectoryBySource: SourceN[?] => Trajectory[Queue],
-		powerTrajectory: Trajectory[Mapping[Quantity]],
-		desiredBacklogAtEndingInstant: Mapping[Trajectory[DesiredBacklog]],
+		powerPlan: PowerPlan[closedGraph.type],
 	): Trajectory[Log] = {
-		var accumulatedCost: Money = ZERO_MONEY;
+		var accumulatedExpirationCost: Money = ZERO_MONEY;
 
 		buildTrajectory[Mapping[Queue], Log](initialBacklog) {
 			(backlogAtStart: Mapping[Queue], pieceIndex: Int, start: Instant, end: Instant) =>
 
-				val power = powerTrajectory.getWholePieceIntegralAt(pieceIndex);
-
+				val power = powerPlan.getPowerAt(pieceIndex);
 				val backlogLog = pieceBacklogCalculator.calc(backlogAtStart, power)(source => upstreamTrajectoryBySource(source).getWholePieceIntegralAt(pieceIndex));
 
-				val graphInfo = combine3Mappings(backlogAtStart, backlogLog, desiredBacklogAtEndingInstant) {
-					(backlogAtStartAtStage, backlogLogAtStage, desiredBacklogAtEndingInstantAtStage) =>
-						PieceCostCalculator.StageInfo(
-							backlogAtStartAtStage,
-							backlogLogAtStage.processed,
-							backlogLogAtStage.backlogAtEnd,
-							backlogLogAtStage.shortage,
-							desiredBacklogAtEndingInstantAtStage.getWholePieceIntegralAt(pieceIndex)
-						)
-				}
-				val cost = pieceCostCalculator.calcBacklogCost(piecewiseAlgebra.firstPieceStartingInstant, start, end, graphInfo);
-				accumulatedCost = accumulatedCost.plus(cost);
-				Log(cost, accumulatedCost, backlogLog)
+				val expirationCostBySink = pieceCostCalculator.calcExpirationCost(piecewiseAlgebra.firstPieceStartingInstant, start, end, backlogLog.map { _.processed });
+				val totalExpirationCost = expirationCostBySink.iterator.map(_._2).reduce[Money] { (a, b) => a.plus(b) };
+				accumulatedExpirationCost = accumulatedExpirationCost.plus(totalExpirationCost);
+
+				Log(powerPlan.getCostAt(pieceIndex), expirationCostBySink, accumulatedExpirationCost, backlogLog)
 		} {
-			log => log.backlogLog.map(_.backlogAtEnd)
+			(_, log) => log.backlogLog.map(_.backlogAtEnd)
 		}
 	}
 }

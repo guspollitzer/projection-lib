@@ -37,7 +37,7 @@ class PieceBacklogCalculator[CG <: ClosedGraph](val closedGraph: CG) {
 			(stage: Stage, backlogAtStartAtStage: Queue, alreadyCalculatedLogs: Map[Stage, CalculatedBacklog]) =>
 				val upstreamAtStage = getUpstreamPush(stage, alreadyCalculatedLogs)
 				val source: Queue = backlogAtStartAtStage ++ upstreamAtStage
-				val consumption: Consumption[Queue] = source.consumed(power.get(stage))
+				val consumption: Consumption[Queue] = source.consumed(power(stage))
 				CalculatedBacklog(consumption.consumed, consumption.remaining, consumption.shortage)
 		}
 	}

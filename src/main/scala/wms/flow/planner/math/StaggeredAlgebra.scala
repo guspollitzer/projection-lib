@@ -118,7 +118,12 @@ class StaggeredAlgebra private(
 		override def getWholePieceIntegralAt(index: Int): A = wholePieceIntegralByIndex(index)
 	}
 
-	protected class Lazy[+A](func: (pieceIndex: Int) => A) extends StaggeredTrajectory[A] {
+	protected class Lazy[+A](wholePieceIntegralByIndex: LazyList[A]) extends StaggeredTrajectory[A] {
+		/** TODO Optimize this method: take advantage of what was done in the call with an index less than or equal to the one received now.  */
+		override def getWholePieceIntegralAt(index: Int): A = wholePieceIntegralByIndex(index)
+	}
+
+	protected class Deferred[+A](func: (pieceIndex: Int) => A) extends StaggeredTrajectory[A] {
 
 		override def getWholePieceIntegralAt(index: Int): A = func(index)
 	}
@@ -153,17 +158,17 @@ class StaggeredAlgebra private(
 
 	def numberOfPieces: Int = pieceEndingInstantByIndex.size
 
-	def buildTrajectory[A](f: (pieceIndex: Int) => A): Trajectory[A] = new Lazy[A](f)
+	def buildTrajectory[A](f: (pieceIndex: Int) => A): Trajectory[A] = new Deferred[A](f)
 
 	def buildTrajectory[A](f: (pieceIndex: Int, pieceStart: Instant, pieceEnd: Instant) => A): Trajectory[A] = {
-		new Lazy[A](pieceIndex => {
+		new Deferred[A](pieceIndex => {
 			val pieceStart = if pieceIndex == 0 then firstPieceStartingInstant else pieceEndingInstantByIndex(pieceIndex - 1)
 			val pieceEnd = pieceEndingInstantByIndex(pieceIndex)
 			f(pieceIndex, pieceStart, pieceEnd)
 		})
 	}
 
-	def buildTrajectory[S, A](initialState: S)(valueBuilder: (state: S, index: Int, start: Instant, end: Instant) => A)(nextPieceInitialStateBuilder: A => S): StaggeredTrajectory[A] = {
+	def buildTrajectory[S, A](initialState: S)(valueBuilder: (state: S, index: Int, start: Instant, end: Instant) => A)(nextPieceInitialStateBuilder: (S, A) => S): StaggeredTrajectory[A] = {
 		val builder = IndexedSeq.newBuilder[A];
 
 		@tailrec
@@ -172,12 +177,25 @@ class StaggeredAlgebra private(
 				val end = pieceEndingInstantByIndex(index)
 				val value = valueBuilder(state, index, start, end)
 				builder.addOne(value)
-				loop(nextPieceInitialStateBuilder(value), index + 1, end)
+				loop(nextPieceInitialStateBuilder(state, value), index + 1, end)
 			}
 		}
 
 		loop(initialState, 0, firstPieceStartingInstant)
 		new Eager[A](builder.result())
+	}
+
+	def buildLazyTrajectory[S, A](initialState: S)(valueBuilder: (state: S, index: Int, start: Instant, end: Instant) => A)(nextPieceInitialStateBuilder: (S, A) => S): StaggeredTrajectory[A] = {
+		def loop(state: S, index: Int, start: Instant): LazyList[A] = {
+			if index < pieceEndingInstantByIndex.size then {
+				val end = pieceEndingInstantByIndex(index)
+				val value = valueBuilder(state, index, start, end);
+				value #:: loop(nextPieceInitialStateBuilder(state, value), index + 1, end)
+			} else {
+				LazyList.empty
+			}
+		}
+		new Lazy(loop(initialState, 0, firstPieceStartingInstant));
 	}
 
 	override def combine[A, B, C](ta: Trajectory[A], tb: Trajectory[B])(f: (A, B) => C): StaggeredTrajectory[C] = new MapTwo(ta, tb)(f)

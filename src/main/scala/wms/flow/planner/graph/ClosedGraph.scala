@@ -68,10 +68,13 @@ class ClosedGraph private[ClosedGraph](stages: IndexedSeq[Stage]) {
 
 
 	/** A map whose keys are all the stages of this [[ClosedGraph]] instance and the values are of the specified type. */
-	case class Mapping[+A](values: IndexedSeq[A]) {
+	case class Mapping[+A](values: IndexedSeq[A]) extends (Stage => A) {
 		assert(values.size == closedGraph.stages.size);
 
-		def get(stage: Stage): A = values.apply(stage.ordinal)
+		override def apply(stage: Stage): A = {
+			assert(stages.contains(stage));
+			values.apply(stage.ordinal)
+		}
 
 		def map[B](f: A => B): Mapping[B] = Mapping(values.map(f))
 
@@ -128,7 +131,7 @@ class ClosedGraph private[ClosedGraph](stages: IndexedSeq[Stage]) {
 				}
 			}
 
-			val oldValueByStage = for stage <- closedGraph.stages yield ValueAtStage(stage, this.get(stage))
+			val oldValueByStage = for stage <- closedGraph.stages yield ValueAtStage(stage, this(stage))
 			val newValueByStage = loop(oldValueByStage.toList, Nil, Map.empty)
 
 			createMapping(newValueByStage.apply)

@@ -102,7 +102,7 @@ class RequiredPowerCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val pie
 
 			// TODO break the load down by path in order to calculate the productivity more precisely.
 			val trajectoryOfLoadDemandedByDownstream: Trajectory[Quantity] = trajectoryOfQueueDemandedByDownstream.toLoad;
-			val desiredBacklogAtEndingInstantAtStage: Trajectory[DesiredBacklog] = desiredBacklogAtEndingInstant.get(stage);
+			val desiredBacklogAtEndingInstantAtStage: Trajectory[DesiredBacklog] = desiredBacklogAtEndingInstant(stage);
 
 			stageInitialState match {
 				case CaseA(priorityStageInitialState) =>
@@ -111,11 +111,11 @@ class RequiredPowerCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val pie
 
 							val desiredLoadAtEndingInstantAtStageAtPiece: Quantity = desiredBacklogAtEndingInstantAtStage.getPieceMeanAt(index) match {
 								case Maximal =>
-									maxBacklogLoad.get(stage);
+									maxBacklogLoad(stage);
 
 								case Minimal(duration) =>
 									scala.math.min(
-										maxBacklogLoad.get(stage),
+										maxBacklogLoad(stage),
 										trajectoryOfLoadDemandedByDownstream.integrate(end, end + duration, true)
 									);
 							}
@@ -146,7 +146,7 @@ class RequiredPowerCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val pie
 									???
 							}
 
-					} (requiredPowerAtPiece => StageInitialState(requiredPowerAtPiece.upstreamDemand))
+					} { (_, requiredPowerAtPiece) => StageInitialState(requiredPowerAtPiece.upstreamDemand) }
 
 					CaseA(requiredPowerTrajectory)
 

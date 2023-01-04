@@ -4,13 +4,14 @@ package prueba
 import engine.RequiredPowerCalculator
 import graph.*
 import math.*
-import queue.{total, Concatenable, FifoQueue, Heap, PriorityQueue, given}
+import queue.{*, given}
 import StaggeredAlgebra.*
 import time.{*, given}
 import time.Instant.{*, given}
 import global.*
 import util.*
 import workflow.*
+import resource.*
 
 import scala.annotation.targetName
 import scala.collection.immutable.TreeMap
@@ -89,6 +90,65 @@ object Grafo {
 					downstreamDemandTrajectory
 				)
 				x
+		}
+	}
+
+	def borrame(): Unit = {
+		import engine.*
+
+		val eClosedGraph = ClosedGraph.build(
+			builder => {
+				given ClosedGraph.Builder = builder
+
+				val source = Source[PriorityQueue]("source")
+				val fork = NToM[PriorityQueue, FifoQueue]("fork", 1, 2)
+				val flow = Flow[FifoQueue, FifoQueue]("flow")
+				val join = NToM[FifoQueue, PriorityQueue]("join", 2, 1)
+				val sink = Sink[PriorityQueue]("sink")
+
+				source.out ~> fork.ins(0)
+				fork.outs(0) ~> flow.in
+				flow.out ~> join.ins(0)
+				fork.outs(1) ~> join.ins(1)
+				join.outs(0) ~> sink.in
+			}
+		)
+
+		val quantityFractionable: Fractionable[Quantity] = new Fractionable[Quantity] {
+			extension (a: Quantity) def takeFraction(fraction: Quantity): Quantity = a * fraction
+		}
+
+		val quantityConcatenable: Concatenable[Quantity] = new Concatenable[Quantity] {
+			override def empty = 0
+
+			extension (a: Quantity) {
+				@targetName("concat")
+				def ++(b: Quantity): Quantity = a + b
+			}
+		}
+
+		val facForQuantity = FractionAndConcatOpsFor[Quantity](quantityFractionable, quantityConcatenable)
+
+		given opsSummoner: FractionAndConcatOpsSummoner = new FractionAndConcatOpsSummoner(facForQuantity)
+
+		eClosedGraph.map {
+			closedGraph =>
+				import closedGraph.*
+
+				val pieceEndingInstantByIndex = IArray.tabulate[Instant](3)(i => i + 1f);
+				val algebra = new StaggeredAlgebra(0f, pieceEndingInstantByIndex);
+				import algebra.*
+
+				val pcc = new PlanCostCalculator[algebra.type, closedGraph.type](algebra, closedGraph)(Map.empty);
+				val initialBacklog: Mapping[Queue] = createMapping(stage => CaseB(List.empty))
+				val upstreamTrajectoryBySource: SourceN[?] => Trajectory[Queue] = source => algebra.buildTrajectory[Queue]( (index: Int) => CaseB(List.empty) );
+				val powerPlan = new PlanCostCalculator.PowerPlan[closedGraph.type](closedGraph) {
+					def getPowerAt(pieceIndex: Int): Mapping[Quantity] = ???
+
+					def getCostAt(pieceIndex: Int): Mapping[Money] = ???
+				}
+
+				pcc.calc(initialBacklog, upstreamTrajectoryBySource, powerPlan);
 		}
 	}
 }
