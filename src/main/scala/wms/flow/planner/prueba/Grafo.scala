@@ -2,6 +2,7 @@ package wms.flow.planner
 package prueba
 
 import engine.RequiredPowerCalculator
+import RequiredPowerCalculator.*
 import graph.*
 import math.*
 import queue.{*, given}
@@ -68,8 +69,8 @@ object Grafo {
 				val algebra = new StaggeredAlgebra(0f, pieceEndingInstantByIndex);
 				val rpc = new RequiredPowerCalculator[algebra.type, closedGraph.type](algebra, closedGraph);
 
-				val stateAtStartingInstant: closedGraph.Mapping[rpc.SIS] = closedGraph
-					.createMapping[rpc.SIS](stage => CaseA(rpc.StageInitialState(PriorityQueue.from(TreeMap.empty[Priority, Heap]))))
+				val stateAtStartingInstant: closedGraph.Mapping[Queue] = closedGraph
+					.createMapping[Queue](stage => CaseA(PriorityQueue.from(TreeMap.empty[Priority, Heap])))
 
 				val desiredBacklogAtEndingInstant: closedGraph.Mapping[algebra.Trajectory[DesiredBacklog]] =
 					closedGraph.createMapping(stage => algebra.buildTrajectory(pieceIndex => stage match {
