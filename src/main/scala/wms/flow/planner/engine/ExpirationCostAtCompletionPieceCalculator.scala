@@ -9,7 +9,7 @@ import time.*
 import workflow.*
 
 
-object PieceExpirationCostCalculator {
+object ExpirationCostAtCompletionPieceCalculator {
 
 	trait ExpirationExpectancyFunc {
 		/** The implementation should calculate the expected value of the amount of elements that will be completed after the deadline for a set of elements that, according to the projection, are completed (at constant speed) during the specified interval.
@@ -30,9 +30,9 @@ object PieceExpirationCostCalculator {
 	case class SinkParams(expirationExpectancyFunc: ExpirationExpectancyFunc, expirationCostFunc: ExpirationCostFunc)
 }
 
-import PieceExpirationCostCalculator.*
+import ExpirationCostAtCompletionPieceCalculator.*
 
-class PieceExpirationCostCalculator[CG <: ClosedGraph](val closedGraph: CG)(sinksParams: Map[SinkN[?], SinkParams]) {
+class ExpirationCostAtCompletionPieceCalculator[CG <: ClosedGraph](val closedGraph: CG)(sinksParams: Map[SinkN[?], SinkParams]) {
 	import closedGraph.*
 
 	/** Calculates the expected value of the cost due to expired elements (those whose processing is completed after the deadline), corresponding to the elements for which, according to the calculated projection, its processing will be completed during the specified interval.
@@ -42,13 +42,13 @@ class PieceExpirationCostCalculator[CG <: ClosedGraph](val closedGraph: CG)(sink
 	  * @param projectionDate the instant when the projection was made.
 	  * @param pieceStart the lower bound of the time interval.
 	  * @param pieceEnd the upper bound of the time interval.
-	  * @param graphInfoGetter a getter of the information needed by this method about the state of the backlog at the sinks, according to a calculated projection, during the interval.
+	  * @param amountOfCompletionsBySink the amount of elements that will be completed at each sink-stage during the interval; grouped by category, in completion order.
 	  * @return the expected value of the expiration cost corresponding to the elements whose processing is completed during the interval. */
 	def calcExpirationCost(
 		projectionDate: Instant,
 		pieceStart: Instant,
 		pieceEnd: Instant,
-		graphInfoGetter: SinkN[?] => Queue,
+		amountOfCompletionsBySink: SinkN[?] => Queue,
 	): Map[SinkN[?], Money] = {
 
 		for (sink, sinkParams) <- sinksParams yield {
@@ -64,7 +64,7 @@ class PieceExpirationCostCalculator[CG <: ClosedGraph](val closedGraph: CG)(sink
 				expectedValueOfExpirationCostAccumulator.plus(expectedValueOfExpirationCostCorrespondingToHeap)
 			}
 
-			val expectedValueOfExpirationTotalCostCorrespondingToSink: Money = graphInfoGetter(sink).travelConsumptionFragments[Money](pieceStart, pieceEnd, ZERO_MONEY)(traveler);
+			val expectedValueOfExpirationTotalCostCorrespondingToSink: Money = amountOfCompletionsBySink(sink).travelConsumptionFragments[Money](pieceStart, pieceEnd, ZERO_MONEY)(traveler);
 			sink -> expectedValueOfExpirationTotalCostCorrespondingToSink
 		}
 	}

@@ -55,16 +55,16 @@ class RequiredPowerCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val pie
 
 	/**
 	  * Calculates the power required to achieve that all stages have the desired backlog at the end of each piece-interval.
-	  * @param initialBacklog the number of elements that the stage has processed in advance, before they are demanded by the next stages. The backlog of a stage waits to be consumed by the next stages.
+	  * @param initialBacklog the number of elements that the stage has processed in advance, before they are demanded by the next stages. The backlog of a stage is the input queue of the immediate next stages (contains the elements that wait to be consumed by the next stages).
 	  * @param desiredBacklogAtEndingInstant the number of elements processed in advance that should present at the end of a piece-interval, waiting to be processed during the next piece-intervals.
-	  * @param maxBacklogLoad the backlog capacity of the stage.
+	  * @param backlogCapacity the backlog capacity of the stage.
 	  * @param sinkByPath know the sink where every path ends.
 	  * @param downstreamDemandTrajectory knows the work demanded to the sink stages.
 	  * */
 	def calcRequiredPowerTrajectory(
 		initialBacklog: Mapping[Queue],
 		desiredBacklogAtEndingInstant: Mapping[Trajectory[DesiredBacklog]],
-		maxBacklogLoad: Mapping[Int],
+		backlogCapacity: Mapping[Int],
 		sinkByPath: Map[Path, SinkN[?]],
 		downstreamDemandTrajectory: Trajectory[PriorityQueue],
 	): Mapping[RequiredPowerTrajectory] = {
@@ -98,11 +98,11 @@ class RequiredPowerCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val pie
 
 						val desiredLoadAtEndingInstantAtStageAtPiece: Quantity = desiredBacklogAtEndingInstantAtStage.getPieceMeanAt(index) match {
 							case Maximal =>
-								maxBacklogLoad(stage);
+								backlogCapacity(stage);
 
 							case Minimal(duration) =>
 								scala.math.min(
-									maxBacklogLoad(stage),
+									backlogCapacity(stage),
 									trajectoryOfLoadDemandedByDownstream.integrate(end, end + duration, true)
 								);
 						}

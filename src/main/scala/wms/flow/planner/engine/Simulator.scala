@@ -12,23 +12,23 @@ class Simulator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val piecewiseAlgebra:
 	import piecewiseAlgebra.*
 	import closedGraph.*
 
-	private val pieceBacklogCalculator = new PieceBacklogCalculator[closedGraph.type](closedGraph)
+	private val flowProjectionPieceCalculator = new FlowProjectionPieceCalculator[closedGraph.type](closedGraph)
 
 	@deprecated
 	def simulate(
-		initialBacklog: Mapping[Queue],
+		initialInputQueue: Mapping[Queue],
 		upstreamTrajectoryBySource: SourceN[?] => Trajectory[Queue],
 		powerTrajectory: Trajectory[Mapping[Quantity]],
-	): Trajectory[Mapping[PieceBacklogCalculator.CalculatedBacklog]] = {
+	): Trajectory[Mapping[FlowProjectionPieceCalculator.StageProjection]] = {
 
-		piecewiseAlgebra.buildTrajectory[Mapping[Queue], Mapping[PieceBacklogCalculator.CalculatedBacklog]](initialBacklog) {
-			(backlogAtStart: Mapping[Queue], pieceIndex: Int, start: Instant, end: Instant) =>
+		piecewiseAlgebra.buildTrajectory[Mapping[Queue], Mapping[FlowProjectionPieceCalculator.StageProjection]](initialInputQueue) {
+			(inputQueueAtStart: Mapping[Queue], pieceIndex: Int, start: Instant, end: Instant) =>
 
 				val power = powerTrajectory.getWholePieceIntegralAt(pieceIndex);
 
-				pieceBacklogCalculator.calc(backlogAtStart, power)(source => upstreamTrajectoryBySource(source).getWholePieceIntegralAt(pieceIndex))
+				flowProjectionPieceCalculator.calc(inputQueueAtStart, power)(source => upstreamTrajectoryBySource(source).getWholePieceIntegralAt(pieceIndex))
 		} {
-			(_, logMapping) => logMapping.map(_.backlogAtEnd)
+			(_, logMapping) => logMapping.map(_.inputQueueAtEnd)
 		}
 	}
 

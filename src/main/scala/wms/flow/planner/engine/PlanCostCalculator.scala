@@ -24,53 +24,53 @@ class PlanCostCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 	val piecewiseAlgebra: PA,
 	val closedGraph: CG
 )(
-	val sinkCostParams: Map[SinkN[?], PieceExpirationCostCalculator.SinkParams]
+	val sinkCostParams: Map[SinkN[?], ExpirationCostAtCompletionPieceCalculator.SinkParams]
 ) {
 	import PlanCostCalculator.*
 	import closedGraph.*
 	import piecewiseAlgebra.*
 
-	case class Log(totalPowerCost: Money, powerCostByStage: Mapping[Money], accumulatedPowerCost: Money, totalExpirationCost: Money, expirationCostBySink: Map[SinkN[?], Money], accumulatedExpirationCost: Money, backlogLog: Mapping[PieceBacklogCalculator.CalculatedBacklog])
+	case class Log(totalPowerCost: Money, powerCostByStage: Mapping[Money], accumulatedPowerCost: Money, totalExpirationCost: Money, expirationCostBySink: Map[SinkN[?], Money], accumulatedExpirationCost: Money, graphProjection: Mapping[FlowProjectionPieceCalculator.StageProjection])
 
-	private val pieceBacklogCalculator = new PieceBacklogCalculator[closedGraph.type](closedGraph);
-	private val pieceCostCalculator = new PieceExpirationCostCalculator[closedGraph.type](closedGraph)(sinkCostParams);
+	private val flowProjectionPieceCalculator = new FlowProjectionPieceCalculator[closedGraph.type](closedGraph);
+	private val expirationCostAtCompletionPieceCalculator = new ExpirationCostAtCompletionPieceCalculator[closedGraph.type](closedGraph)(sinkCostParams);
 
 	def calc(
-		initialBacklog: Mapping[Queue],
+		initialInputQueue: Mapping[Queue],
 		upstreamTrajectory: Trajectory[Queue],
 		powerPlan: PowerPlan[closedGraph.type],
 		sourceByPath: Map[Path, Source[?]]
 	): Trajectory[Log] = {
 		val upstreamTools = new UpstreamTools[piecewiseAlgebra.type](piecewiseAlgebra);
 		val upstreamTrajectoryFor = upstreamTools.buildTrajectoryBySourceGetter(upstreamTrajectory, sourceByPath);
-		calc(initialBacklog, upstreamTrajectoryFor, powerPlan);
+		calc(initialInputQueue, upstreamTrajectoryFor, powerPlan);
 	}
 
 	def calc(
-		initialBacklog: Mapping[Queue],
+		initialInputQueue: Mapping[Queue],
 		upstreamTrajectoryBySource: SourceN[?] => Trajectory[Queue],
 		powerPlan: PowerPlan[closedGraph.type],
 	): Trajectory[Log] = {
 		var accumulatedExpirationCost: Money = ZERO_MONEY;
 		var accumulatedPowerCost: Money = ZERO_MONEY;
 
-		buildTrajectory[Mapping[Queue], Log](initialBacklog) {
-			(backlogAtStart: Mapping[Queue], pieceIndex: Int, start: Instant, end: Instant) =>
+		buildTrajectory[Mapping[Queue], Log](initialInputQueue) {
+			(inputQueueAtStart: Mapping[Queue], pieceIndex: Int, start: Instant, end: Instant) =>
 
 				val powerCostByStage = powerPlan.getCostAt(pieceIndex);
 				val totalPowerCost: Money = powerCostByStage.iterator.reduce[Money]{ (a, b) => a.plus(b) }
 				accumulatedPowerCost = accumulatedPowerCost.plus(totalPowerCost);
 
 				val power = powerPlan.getPowerAt(pieceIndex);
-				val backlogLog = pieceBacklogCalculator.calc(backlogAtStart, power)(source => upstreamTrajectoryBySource(source).getWholePieceIntegralAt(pieceIndex));
+				val graphProjection = flowProjectionPieceCalculator.calc(inputQueueAtStart, power)(source => upstreamTrajectoryBySource(source).getWholePieceIntegralAt(pieceIndex));
 
-				val expirationCostBySink = pieceCostCalculator.calcExpirationCost(piecewiseAlgebra.firstPieceStartingInstant, start, end, backlogLog.map { _.processed });
+				val expirationCostBySink = expirationCostAtCompletionPieceCalculator.calcExpirationCost(piecewiseAlgebra.firstPieceStartingInstant, start, end, graphProjection.map { _.processed });
 				val totalExpirationCost = expirationCostBySink.iterator.map(_._2).reduce[Money] { (a, b) => a.plus(b) };
 				accumulatedExpirationCost = accumulatedExpirationCost.plus(totalExpirationCost);
 
-				Log(totalPowerCost, powerCostByStage, accumulatedPowerCost, totalExpirationCost, expirationCostBySink, accumulatedExpirationCost, backlogLog)
+				Log(totalPowerCost, powerCostByStage, accumulatedPowerCost, totalExpirationCost, expirationCostBySink, accumulatedExpirationCost, graphProjection)
 		} {
-			(_, log) => log.backlogLog.map(_.backlogAtEnd)
+			(_, log) => log.graphProjection.map(_.inputQueueAtEnd)
 		}
 	}
 }

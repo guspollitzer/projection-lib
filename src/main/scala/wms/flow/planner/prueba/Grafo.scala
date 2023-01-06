@@ -78,7 +78,7 @@ object Grafo {
 						case _ => Minimal(10f)
 					}))
 
-				val maxBacklogLoad = closedGraph.createMapping(stage => 10)
+				val backlogCapacity = closedGraph.createMapping(stage => 10)
 				val theSink = closedGraph.getSinks(0)
 				val sinkByPath = Map(Path.A -> theSink, Path.B -> theSink, Path.C -> theSink)
 
@@ -86,7 +86,7 @@ object Grafo {
 				val x = rpc.calcRequiredPowerTrajectory(
 					stateAtStartingInstant,
 					desiredBacklogAtEndingInstant,
-					maxBacklogLoad,
+					backlogCapacity,
 					sinkByPath,
 					downstreamDemandTrajectory
 				)
@@ -141,7 +141,7 @@ object Grafo {
 				import algebra.*
 
 				val pcc = new PlanCostCalculator[algebra.type, closedGraph.type](algebra, closedGraph)(Map.empty);
-				val initialBacklog: Mapping[Queue] = createMapping(stage => CaseB(List.empty))
+				val initialInputQueue: Mapping[Queue] = createMapping(stage => CaseB(List.empty))
 				val upstreamTrajectoryBySource: SourceN[?] => Trajectory[Queue] = source => algebra.buildTrajectory[Queue]( (index: Int) => CaseB(List.empty) );
 				val powerPlan = new PlanCostCalculator.PowerPlan[closedGraph.type](closedGraph) {
 					def getPowerAt(pieceIndex: Int): Mapping[Quantity] = ???
@@ -149,7 +149,7 @@ object Grafo {
 					def getCostAt(pieceIndex: Int): Mapping[Money] = ???
 				}
 
-				pcc.calc(initialBacklog, upstreamTrajectoryBySource, powerPlan);
+				pcc.calc(initialInputQueue, upstreamTrajectoryBySource, powerPlan);
 		}
 	}
 }

@@ -23,7 +23,7 @@ class PowerPlanOptimizer[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val piecewis
 	import closedGraph.*
 	import piecewiseAlgebra.*
 
-	def optimize(initialBacklog: Mapping[Queue], upstreamTrajectoryBySource: SourceN[?] => Trajectory[Queue], initialPlan: PowerPlan)(progressTraveler: PowerPlan => Boolean): Unit = {
+	def optimize(initialInputQueue: Mapping[Queue], upstreamTrajectoryBySource: SourceN[?] => Trajectory[Queue], initialPlan: PowerPlan)(progressTraveler: PowerPlan => Boolean): Unit = {
 
 //		buildLazyTrajectory()
 
