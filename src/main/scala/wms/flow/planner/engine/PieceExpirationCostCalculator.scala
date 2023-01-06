@@ -9,7 +9,7 @@ import time.*
 import workflow.*
 
 
-object PieceCostCalculator {
+object PieceExpirationCostCalculator {
 
 	trait ExpirationExpectancyFunc {
 		/** The implementation should calculate the expected value of the amount of elements that will be completed after the deadline for a set of elements that, according to the projection, are completed (at constant speed) during the specified interval.
@@ -26,13 +26,13 @@ object PieceCostCalculator {
 	}
 
 	/** The implementation should calculate the cost of that an element's processing is completed after its deadline. */
-	type ExpirationCostFunc = (channel: Channel) => Money
+	type ExpirationCostFunc = (channel: Channel, path: Path) => Money
 	case class SinkParams(expirationExpectancyFunc: ExpirationExpectancyFunc, expirationCostFunc: ExpirationCostFunc)
 }
 
-import PieceCostCalculator.*
+import PieceExpirationCostCalculator.*
 
-class PieceCostCalculator[CG <: ClosedGraph](val closedGraph: CG)(sinksParams: Map[SinkN[?], SinkParams]) {
+class PieceExpirationCostCalculator[CG <: ClosedGraph](val closedGraph: CG)(sinksParams: Map[SinkN[?], SinkParams]) {
 	import closedGraph.*
 
 	/** Calculates the expected value of the cost due to expired elements (those whose processing is completed after the deadline), corresponding to the elements for which, according to the calculated projection, its processing will be completed during the specified interval.
@@ -57,7 +57,7 @@ class PieceCostCalculator[CG <: ClosedGraph](val closedGraph: CG)(sinksParams: M
 				var expectedValueOfExpirationCostCorrespondingToHeap: Money = ZERO_MONEY;
 				for (category, quantity) <- heap do {
 					val expectedValueOfAmountOfExpiredElements: Quantity = sinkParams.expirationExpectancyFunc(projectionDate, fragmentStart, fragmentEnd, quantity, category.priority);
-					val singleElementExpirationCost: Money = sinkParams.expirationCostFunc(category.channel);
+					val singleElementExpirationCost: Money = sinkParams.expirationCostFunc(category.channel, category.path);
 					val expectedValueOfExpirationCost: Money = singleElementExpirationCost.multipliedBy(expectedValueOfAmountOfExpiredElements);
 					expectedValueOfExpirationCostCorrespondingToHeap = expectedValueOfExpirationCostCorrespondingToHeap.plus(expectedValueOfExpirationCost)
 				}
