@@ -1,6 +1,7 @@
 package wms.flow.planner
 package engine
 
+import global.*
 import graph.*
 import math.*
 import queue.{*, given}
@@ -10,11 +11,11 @@ import resource.*
 object PowerPlanOptimizer {
 
 	trait PowerPlan {
-		def costAt(pieceIndex: Int, stage: Stage): Money
+		def costAt(pieceIndex: PieceIndex, stage: Stage): Money
 
-		def withPowerIncreasedAt(pieceIndex: Int, stage: Stage): List[PowerPlan]
+		def withPowerIncreasedAt(pieceIndex: PieceIndex, stage: Stage): List[PowerPlan]
 
-		def withPowerDecreasedAt(pieceIndex: Int, stage: Stage): List[PowerPlan]
+		def withPowerDecreasedAt(pieceIndex: PieceIndex, stage: Stage): List[PowerPlan]
 	}
 }
 

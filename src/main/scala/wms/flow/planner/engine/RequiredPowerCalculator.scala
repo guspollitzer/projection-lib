@@ -3,7 +3,7 @@ package engine
 
 import global.*
 import graph.*
-import math.{Fractionable, PiecewiseAlgebra, StaggeredAlgebra, given}
+import math.{*, given}
 import queue.{*, given}
 import time.*
 import util.{CaseA, CaseB, OneOf, TypeId}
@@ -32,9 +32,9 @@ class RequiredPowerCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val pie
 		  * @param prefix the first queue of said queues concatenation.
 		  * @param maxBornPieceIndex the consumed queue (the one resulting of the mentioned concatenation), will not contain elements associated to a category whose `bornPieceIndex` is greater than this parameter (this limit avoids consuming something that doesn't exist yet).
 		  * @return the resulting consumption. */
-		def consumeExistingElemsStartingAt(startingIndex: Int, quantityToConsume: Quantity, prefix: Queue, maxBornPieceIndex: Int): Consumption[Queue] = {
+		def consumeExistingElemsStartingAt(startingIndex: PieceIndex, quantityToConsume: Quantity, prefix: Queue, maxBornPieceIndex: PieceIndex): Consumption[Queue] = {
 			@tailrec
-			def loop(index: Int, concatenation: Queue, consecutiveEmptyFollowingPiecesQueues: Int): Consumption[Queue] = {
+			def loop(index: PieceIndex, concatenation: Queue, consecutiveEmptyFollowingPiecesQueues: Int): Consumption[Queue] = {
 				val consumption = concatenation.consumed(quantityToConsume);
 				if consumption.shortage == 0 || index >= numberOfPieces || consecutiveEmptyFollowingPiecesQueues > MAX_CONSECUTIVE_EMPTY_QUEUES then consumption
 				else {

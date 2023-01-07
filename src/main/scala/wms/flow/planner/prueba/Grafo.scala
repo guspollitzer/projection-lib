@@ -142,11 +142,11 @@ object Grafo {
 
 				val pcc = new PlanCostCalculator[algebra.type, closedGraph.type](algebra, closedGraph)(Map.empty);
 				val initialInputQueue: Mapping[Queue] = createMapping(stage => CaseB(List.empty))
-				val upstreamTrajectoryBySource: SourceN[?] => Trajectory[Queue] = source => algebra.buildTrajectory[Queue]( (index: Int) => CaseB(List.empty) );
+				val upstreamTrajectoryBySource: SourceN[?] => Trajectory[Queue] = source => algebra.buildTrajectory[Queue]( (index: PieceIndex) => CaseB(List.empty) );
 				val powerPlan = new PlanCostCalculator.PowerPlan[closedGraph.type](closedGraph) {
-					def getPowerAt(pieceIndex: Int): Mapping[Quantity] = ???
+					def getPowerAt(pieceIndex: PieceIndex): Mapping[Quantity] = ???
 
-					def getCostAt(pieceIndex: Int): Mapping[Money] = ???
+					def getCostAt(pieceIndex: PieceIndex): Mapping[Money] = ???
 				}
 
 				pcc.calc(initialInputQueue, upstreamTrajectoryBySource, powerPlan);

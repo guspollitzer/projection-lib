@@ -14,9 +14,9 @@ import workflow.*
 object PlanCostCalculator {
 	trait PowerPlan[CG <: ClosedGraph](val closedGraph: CG) {
 		import closedGraph.*
-		def getPowerAt(pieceIndex: Int): Mapping[Quantity]
+		def getPowerAt(pieceIndex: PieceIndex): Mapping[Quantity]
 
-		def getCostAt(pieceIndex: Int): Mapping[Money]
+		def getCostAt(pieceIndex: PieceIndex): Mapping[Money]
 	}
 }
 
@@ -55,7 +55,7 @@ class PlanCostCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 		var accumulatedPowerCost: Money = ZERO_MONEY;
 
 		buildTrajectory[Mapping[Queue], Log](initialInputQueue) {
-			(inputQueueAtStart: Mapping[Queue], pieceIndex: Int, start: Instant, end: Instant) =>
+			(inputQueueAtStart: Mapping[Queue], pieceIndex: PieceIndex, start: Instant, end: Instant) =>
 
 				val powerCostByStage = powerPlan.getCostAt(pieceIndex);
 				val totalPowerCost: Money = powerCostByStage.iterator.reduce[Money]{ (a, b) => a.plus(b) }

@@ -22,7 +22,7 @@ class Simulator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val piecewiseAlgebra:
 	): Trajectory[Mapping[FlowProjectionPieceCalculator.StageProjection]] = {
 
 		piecewiseAlgebra.buildTrajectory[Mapping[Queue], Mapping[FlowProjectionPieceCalculator.StageProjection]](initialInputQueue) {
-			(inputQueueAtStart: Mapping[Queue], pieceIndex: Int, start: Instant, end: Instant) =>
+			(inputQueueAtStart: Mapping[Queue], pieceIndex: PieceIndex, start: Instant, end: Instant) =>
 
 				val power = powerTrajectory.getWholePieceIntegralAt(pieceIndex);
 
