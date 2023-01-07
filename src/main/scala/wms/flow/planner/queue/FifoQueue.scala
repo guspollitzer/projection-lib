@@ -30,7 +30,11 @@ given QueueOps[FifoQueue] with {
 
 		override def appended(heap: Heap): FifoQueue = thisQueue.appended(heap)
 
-		override def mergedWith(thatQueue: FifoQueue): FifoQueue = thisQueue ++ thatQueue
+		override def mergedWith(thatQueue: FifoQueue): FifoQueue = {
+			// Not implemented because perhaps the case of two FIFO queues joining does not exist in Flow
+			// Because here we lack all the necessary information to know which element was  simplicity the implementation may assume that the two queue where generated simultaneously and at constant speed
+			???
+		}
 
 		override def except(thatQueue: FifoQueue): FifoQueue = thisQueue
 

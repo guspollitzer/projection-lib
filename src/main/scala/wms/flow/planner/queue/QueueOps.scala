@@ -16,6 +16,8 @@ trait QueueOps[Q] {
 		def filterByCategory(predicate: Category => Boolean): Q
 		@Deprecated("because is not used")
 		def appended(heap: Heap): Q
+		/** Creates a queue that is the result of merging two queues as if they where generated simultaneously at constant speed.
+		  * For example, if the queues were FIFO with loads (a1, a2) and (b1,b2,b3), then the resulting queue would be (b1,a1,b2,b3,a2) or (b1,a1,b2,a2,b3) */
 		def mergedWith(thatQueue: Q): Q
 		def except(thatQueue: Q): Q
 		def consumed(quantity: Quantity): Consumption[Q]
