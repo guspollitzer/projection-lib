@@ -12,7 +12,7 @@ type Heap = Map[Category, Quantity]
 
 extension (thisHeap: Heap) {
 
-	def total: Quantity = thisHeap.view.values.sum
+	def total: Quantity = thisHeap.iterator.map(_._2).sum
 	
 	def filteredByCategory(f: Category => Boolean): Heap = thisHeap.view.filterKeys(f).toMap
 

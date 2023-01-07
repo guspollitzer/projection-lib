@@ -11,9 +11,10 @@ trait QueueOps[Q] {
 		def load: Quantity
 
 		def heapIterator: Iterator[Heap]
+		@Deprecated("because is not used")
 		def quantityAtCategoryIterator: Iterator[(Category, Quantity)]
-
 		def filterByCategory(predicate: Category => Boolean): Q
+		@Deprecated("because is not used")
 		def appended(heap: Heap): Q
 		def mergedWith(thatQueue: Q): Q
 		def except(thatQueue: Q): Q
