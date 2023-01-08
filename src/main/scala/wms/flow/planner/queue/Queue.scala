@@ -2,6 +2,7 @@ package wms.flow.planner
 package queue
 
 import global.*
+import graph.Stage
 import math.Fractionable
 import time.*
 import util.*
@@ -49,7 +50,7 @@ given QueueOps[Queue] with {
 			}
 		}
 
-		override def consumed(quantityToConsume: Quantity): Consumption[Queue] = thisQueue match {
+		override def consumed(quantityToConsume: Quantity)(using atStage: Stage, atPiece: PieceIndex): Consumption[Queue] = thisQueue match {
 			case CaseA(priorityQueue) => priorityQueue.consumed(quantityToConsume).map(CaseA(_));
 			case CaseB(fifoQueue) => fifoQueue.consumed(quantityToConsume).map(CaseB(_));
 		}

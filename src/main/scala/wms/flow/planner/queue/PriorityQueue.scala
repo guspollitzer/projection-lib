@@ -1,10 +1,11 @@
 package wms.flow.planner
 package queue
 
-import global.{Category, Priority, Quantity}
+import global.*
 import math.Fractionable
 import util.TypeId
 import time.*
+import graph.Stage
 
 import scala.annotation.{tailrec, targetName}
 import scala.collection.immutable.TreeMap
@@ -41,10 +42,10 @@ given QueueOps[PriorityQueue] with {
 
 		override def appended(heapToAdd: Heap): PriorityQueue = {
 			var workingMap = thisQueue
-			for (category, quantityToAdd) <- heapToAdd do {
+			for (category, quantityToAdd) <- heapToAdd.iterator do {
 				val newHeapAtPriority: Heap = workingMap.get(category.priority) match {
 					case Some(oldHeapAtPriority) => oldHeapAtPriority.add(category, quantityToAdd)
-					case None => Map(category -> quantityToAdd)
+					case None => Heap(Map(category -> quantityToAdd))
 				}
 				workingMap = workingMap.updated(category.priority, newHeapAtPriority)
 			}
@@ -78,30 +79,30 @@ given QueueOps[PriorityQueue] with {
 			}
 		}
 
-		override def consumed(quantityToConsume: Quantity): Consumption[PriorityQueue] = {
-			loop(quantityToConsume, TreeMap.empty)
-		}
+		override def consumed(quantityToConsume: Quantity)(using atStage: Stage, atPiece: PieceIndex): Consumption[PriorityQueue] = {
+			@tailrec
+			def loop(remaining: PriorityQueue, quantityToConsume: Quantity, alreadyConsumed: PriorityQueue): Consumption[PriorityQueue] = {
+				assert(quantityToConsume >= 0)
+				if quantityToConsume == 0 then {
+					Consumption(remaining, alreadyConsumed, 0)
+				} else {
+					remaining.headOption match {
+						case None =>
+							Consumption(TreeMap.empty, alreadyConsumed, quantityToConsume)
 
-		@tailrec
-		private def loop(quantityToConsume: Quantity, alreadyConsumed: PriorityQueue): Consumption[PriorityQueue] = {
-			assert(quantityToConsume >= 0)
-			if quantityToConsume == 0 then {
-				Consumption(thisQueue, alreadyConsumed, 0)
-			} else {
-				thisQueue.headOption match {
-					case None =>
-						Consumption(TreeMap.empty, alreadyConsumed, quantityToConsume)
-
-					case Some((priority, heap)) =>
-						val x: Consumption[Heap] = heap.consume(quantityToConsume)
-						if (x.remaining.nonEmpty) {
-							Consumption(thisQueue.updated(priority, x.remaining), alreadyConsumed + (priority -> x.consumed), 0)
-						} else {
-							assert(x.consumed == heap)
-							thisQueue.tail.loop(x.shortage, alreadyConsumed + (priority -> heap))
-						}
+						case Some((priority, heap)) =>
+							val consumption: Consumption[Heap] = heap.consume(quantityToConsume);
+							if (consumption.remaining.nonEmpty) {
+								Consumption(remaining.updated(priority, consumption.remaining), alreadyConsumed + (priority -> consumption.consumed), 0)
+							} else {
+								assert(consumption.consumed == heap)
+								loop(remaining.tail, consumption.shortage, alreadyConsumed + (priority -> heap))
+							}
+					}
 				}
 			}
+
+			loop(thisQueue, quantityToConsume, TreeMap.empty)
 		}
 	}
 }

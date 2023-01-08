@@ -1,9 +1,10 @@
 package wms.flow.planner
 package queue
 
-import global.{Category, Quantity}
+import global.*
+import graph.Stage
 import math.Fractionable
-import queue.{total, Heap}
+import queue.{*, given}
 import time.*
 import util.TypeId
 
@@ -38,33 +39,34 @@ given QueueOps[FifoQueue] with {
 
 		override def except(thatQueue: FifoQueue): FifoQueue = thisQueue
 
-		override def consumed(quantityToConsume: Quantity): Consumption[FifoQueue] = {
+		override def consumed(quantityToConsume: Quantity)(using atStage: Stage, atPiece: PieceIndex): Consumption[FifoQueue] = {
 			assert(quantityToConsume >= 0)
-			loop(quantityToConsume, Nil)
-		}
 
-		@tailrec
-		private def loop(quantityToConsume: Quantity, alreadyConsumed: List[Heap]): Consumption[FifoQueue] = {
-			if quantityToConsume == 0 then {
-				Consumption(thisQueue, alreadyConsumed.reverse, 0)
-			} else {
-				thisQueue match {
-					case Nil => Consumption(Nil, alreadyConsumed.reverse, quantityToConsume)
+			@tailrec
+			def loop(remaining: FifoQueue, quantityToConsume: Quantity, alreadyConsumed: List[Heap]): Consumption[FifoQueue] = {
+				if quantityToConsume == 0 then {
+					Consumption(remaining, alreadyConsumed.reverse, 0)
+				} else {
+					remaining match {
+						case Nil => Consumption(Nil, alreadyConsumed.reverse, quantityToConsume)
 
-					case head :: tail =>
-						val takenFromHead = head.consume(quantityToConsume)
-						if takenFromHead.shortage == 0 then {
-							Consumption[FifoQueue](
-								takenFromHead.remaining :: tail,
-								(takenFromHead.consumed :: alreadyConsumed).reverse,
-								0
-							)
-						} else {
-							assert(takenFromHead.consumed.nonEmpty)
-							tail.loop(takenFromHead.shortage, takenFromHead.consumed :: alreadyConsumed)
-						}
+						case head :: tail =>
+							val takenFromHead = head.consume(quantityToConsume)
+							if takenFromHead.shortage == 0 then {
+								Consumption[FifoQueue](
+									takenFromHead.remaining :: tail,
+									(takenFromHead.consumed :: alreadyConsumed).reverse,
+									0
+								)
+							} else {
+								assert(takenFromHead.consumed.nonEmpty)
+								loop(remaining.tail, takenFromHead.shortage, takenFromHead.consumed :: alreadyConsumed)
+							}
+					}
 				}
 			}
+
+			loop(thisQueue, quantityToConsume, Nil)
 		}
 	}
 }
@@ -85,4 +87,4 @@ given Fractionable[FifoQueue] with {
 		fq.map(_.takeFraction(fraction))
 }
 
-given TypeId[FifoQueue] = new TypeId[FifoQueue]{}
+given TypeId[FifoQueue] = new TypeId[FifoQueue] {}

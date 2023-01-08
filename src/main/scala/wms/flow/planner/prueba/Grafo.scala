@@ -22,7 +22,7 @@ object Grafo {
 
 	def main(args: Array[String]): Unit = {
 
-		val heap: Heap = Map.empty[Category, Quantity]
+		val heap: Heap = Heap(Map.empty)
 		val load = heap.total
 
 		val eClosedGraph = ClosedGraph.build(

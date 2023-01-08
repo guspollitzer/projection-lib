@@ -20,7 +20,7 @@ class FlowProjectionPieceCalculator[CG <: ClosedGraph](val closedGraph: CG) {
 	import FlowProjectionPieceCalculator.*
 	import closedGraph.*
 
-	def calc(inputQueueAtStart: Mapping[Queue], power: Mapping[Quantity])(upstreamBySource: SourceN[?] => Queue): Mapping[StageProjection] = {
+	def calc(pieceIndex: PieceIndex, inputQueueAtStart: Mapping[Queue], power: Mapping[Quantity])(upstreamBySource: SourceN[?] => Queue): Mapping[StageProjection] = {
 
 		def getUpstreamPush(
 			stage: Stage,
@@ -40,6 +40,8 @@ class FlowProjectionPieceCalculator[CG <: ClosedGraph](val closedGraph: CG) {
 			(stage: Stage, inputQueueAtStartAtStage: Queue, alreadyCalculatedLogs: Map[Stage, StageProjection]) =>
 				val upstreamAtStage = getUpstreamPush(stage, alreadyCalculatedLogs)
 				val source: Queue = inputQueueAtStartAtStage ++ upstreamAtStage
+				given PieceIndex = pieceIndex
+				given Stage = stage
 				val consumption: Consumption[Queue] = source.consumed(power(stage))
 				StageProjection(consumption.consumed, consumption.remaining, consumption.shortage)
 		}

@@ -43,6 +43,8 @@ class ClosedGraph private[ClosedGraph](stages: IndexedSeq[Stage]) {
 
 	import ClosedGraph.*
 
+	def size: Int = stages.size
+
 	def getSinks: IndexedSeq[SinkN[?]] = stages.collect { case s: SinkN[?] => s }
 
 	def getSources: IndexedSeq[SourceN[?]] = stages.collect { case s: SourceN[?] => s }

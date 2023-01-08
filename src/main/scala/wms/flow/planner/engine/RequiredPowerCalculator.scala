@@ -32,7 +32,10 @@ class RequiredPowerCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val pie
 		  * @param prefix the first queue of said queues concatenation.
 		  * @param maxBornPieceIndex the consumed queue (the one resulting of the mentioned concatenation), will not contain elements associated to a category whose `bornPieceIndex` is greater than this parameter (this limit avoids consuming something that doesn't exist yet).
 		  * @return the resulting consumption. */
-		def consumeExistingElemsStartingAt(startingIndex: PieceIndex, quantityToConsume: Quantity, prefix: Queue, maxBornPieceIndex: PieceIndex): Consumption[Queue] = {
+		def consumeExistingElemsStartingAt(startingIndex: PieceIndex, quantityToConsume: Quantity, prefix: Queue, maxBornPieceIndex: PieceIndex, atStage: Stage): Consumption[Queue] = {
+			given PieceIndex = maxBornPieceIndex;
+			given Stage = atStage;
+
 			@tailrec
 			def loop(index: PieceIndex, concatenation: Queue, consecutiveEmptyFollowingPiecesQueues: Int): Consumption[Queue] = {
 				val consumption = concatenation.consumed(quantityToConsume);
@@ -76,10 +79,8 @@ class RequiredPowerCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val pie
 				val sinkDownStreamQueue =
 					for (priority, heap) <- downstreamDemand
 						yield {
-							val heapPortionAssignedToThisSink = heap.filter {
-								case (category, _) => sink == sinkByPath(category.path);
-							}
-							priority -> heapPortionAssignedToThisSink;
+							val heapPortionAssignedToThisSink = heap.filteredByCategory(category => sink == sinkByPath(category.path));
+							priority -> heapPortionAssignedToThisSink
 						}
 				sinkDownStreamQueue.filter { (_, h) => h.nonEmpty };
 			}
@@ -94,9 +95,9 @@ class RequiredPowerCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val pie
 				val desiredBacklogAtEndingInstantAtStage: Trajectory[DesiredBacklog] = desiredBacklogAtEndingInstant(stage);
 
 				val requiredPowerTrajectory = buildTrajectory[Queue, RequiredPowerAtPiece](initialBacklogAtStage) {
-					(backlogAtPieceStart, index, start, end) =>
+					(backlogAtPieceStart, pieceIndex, start, end) =>
 
-						val desiredLoadAtEndingInstantAtStageAtPiece: Quantity = desiredBacklogAtEndingInstantAtStage.getPieceMeanAt(index) match {
+						val desiredLoadAtEndingInstantAtStageAtPiece: Quantity = desiredBacklogAtEndingInstantAtStage.getPieceMeanAt(pieceIndex) match {
 							case Maximal =>
 								backlogCapacity(stage);
 
@@ -107,7 +108,7 @@ class RequiredPowerCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val pie
 								);
 						}
 
-						val queueDemandedByDownstream: Queue = trajectoryOfQueueDemandedByDownstream.getWholePieceIntegralAt(index);
+						val queueDemandedByDownstream: Queue = trajectoryOfQueueDemandedByDownstream.getWholePieceIntegralAt(pieceIndex);
 						val loadDemandedByDownstream: Quantity = queueDemandedByDownstream.load;
 
 						// Calculate the minimum number of elements that should be processed during this piece-interval to avoid the backlog gets empty. Which is equal to the downstream demand excluding the elements that were already processed during a previous piece-interval.
@@ -118,10 +119,11 @@ class RequiredPowerCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val pie
 						// Note that, if a portion of the `wayAheadBacklog` is not demanded during the immediate next piece-interval but after that, then part of the backlog will be useless for the immediate next piece-interval. This case may happen only if the initial backlog contains elements that are demanded after the second piece-interval.
 						// TODO: consider changing the behaviour such that the useless way-ahead backlog is not considered as part of the desired backlog.
 						val futureDemandConsumption: Consumption[Queue] = trajectoryOfQueueDemandedByDownstream.consumeExistingElemsStartingAt(
-							index + 1,
+							pieceIndex + 1,
 							scala.math.max(desiredLoadAtEndingInstantAtStageAtPiece, wayAheadBacklog.load),
 							wayAheadBacklog,
-							index
+							pieceIndex,
+							stage
 						);
 						val stageQueueAtPieceEnd = futureDemandConsumption.consumed;
 

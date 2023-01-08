@@ -1,28 +1,31 @@
 package wms.flow.planner
 package queue
 
-import scala.collection.MapView
-
-import global.{Quantity, Category}
+import global.*
+import graph.Stage
 import time.*
+
+import scala.collection.MapView
 
 trait QueueOps[Q] {
 	extension (queue: Q) {
 		def load: Quantity
 
 		def heapIterator: Iterator[Heap]
-		@Deprecated("because is not used")
+		/** @deprecated because is not used */
 		def quantityAtCategoryIterator: Iterator[(Category, Quantity)]
 		def filterByCategory(predicate: Category => Boolean): Q
-		@Deprecated("because is not used")
+		/** @deprecated because is not used */
 		def appended(heap: Heap): Q
 		/** Creates a queue that is the result of merging two queues as if they where generated simultaneously at constant speed.
 		  * For example, if the queues were FIFO with loads (a1, a2) and (b1,b2,b3), then the resulting queue would be (b1,a1,b2,b3,a2) or (b1,a1,b2,a2,b3) */
 		def mergedWith(thatQueue: Q): Q
 		def except(thatQueue: Q): Q
-		def consumed(quantity: Quantity): Consumption[Q]
+		def consumed(quantity: Quantity)(using atStage: Stage, atPiece: PieceIndex): Consumption[Q]
 
 		/** Travels the [[Heap]]s of this queue in order, giving the time fragments during which each heap would be consumed if the whole queue consumption started and ended at the specified instants; assuming the consumption speed is constant.
+		  *
+		  * Design note: It was chosen to use a traveler instead of returning a collection, just for efficiency.
 		  * @param consumptionStart the hypothetical instant when the consumption of this queue starts.
 		  * @param consumptionEnd the hypothetical instant when the consumption of this queue ends.
 		  * @param initialState the initial state of the traveler

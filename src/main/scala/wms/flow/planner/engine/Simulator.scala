@@ -26,7 +26,7 @@ class Simulator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val piecewiseAlgebra:
 
 				val power = powerTrajectory.getWholePieceIntegralAt(pieceIndex);
 
-				flowProjectionPieceCalculator.calc(inputQueueAtStart, power)(source => upstreamTrajectoryBySource(source).getWholePieceIntegralAt(pieceIndex))
+				flowProjectionPieceCalculator.calc(pieceIndex, inputQueueAtStart, power)(source => upstreamTrajectoryBySource(source).getWholePieceIntegralAt(pieceIndex))
 		} {
 			(_, logMapping) => logMapping.map(_.inputQueueAtEnd)
 		}

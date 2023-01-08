@@ -9,6 +9,7 @@ import resource.*
 import time.*
 import util.*
 import workflow.*
+import ExpirationCostAtCompletionPieceCalculator.ExpirationCost
 
 
 object PlanCostCalculator {
@@ -30,7 +31,7 @@ class PlanCostCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 	import closedGraph.*
 	import piecewiseAlgebra.*
 
-	case class Log(totalPowerCost: Money, powerCostByStage: Mapping[Money], accumulatedPowerCost: Money, totalExpirationCost: Money, expirationCostBySink: Map[SinkN[?], Money], accumulatedExpirationCost: Money, graphProjection: Mapping[FlowProjectionPieceCalculator.StageProjection])
+	case class Log(totalPowerCost: Money, powerCostByStage: Mapping[Money], accumulatedPowerCost: Money, expirationCost: ExpirationCost, accumulatedExpirationCost: Money, graphProjection: Mapping[FlowProjectionPieceCalculator.StageProjection])
 
 	private val flowProjectionPieceCalculator = new FlowProjectionPieceCalculator[closedGraph.type](closedGraph);
 	private val expirationCostAtCompletionPieceCalculator = new ExpirationCostAtCompletionPieceCalculator[closedGraph.type](closedGraph)(sinkCostParams);
@@ -62,13 +63,12 @@ class PlanCostCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 				accumulatedPowerCost = accumulatedPowerCost.plus(totalPowerCost);
 
 				val power = powerPlan.getPowerAt(pieceIndex);
-				val graphProjection = flowProjectionPieceCalculator.calc(inputQueueAtStart, power)(source => upstreamTrajectoryBySource(source).getWholePieceIntegralAt(pieceIndex));
+				val graphProjection = flowProjectionPieceCalculator.calc(pieceIndex, inputQueueAtStart, power)(source => upstreamTrajectoryBySource(source).getWholePieceIntegralAt(pieceIndex));
 
-				val expirationCostBySink = expirationCostAtCompletionPieceCalculator.calcExpirationCost(piecewiseAlgebra.firstPieceStartingInstant, start, end, graphProjection.map { _.processed });
-				val totalExpirationCost = expirationCostBySink.iterator.map(_._2).reduce[Money] { (a, b) => a.plus(b) };
-				accumulatedExpirationCost = accumulatedExpirationCost.plus(totalExpirationCost);
+				val expirationCost = expirationCostAtCompletionPieceCalculator.calcExpirationCost(piecewiseAlgebra.firstPieceStartingInstant, start, end, graphProjection.map { _.processed });
+				accumulatedExpirationCost = accumulatedExpirationCost.plus(expirationCost.total);
 
-				Log(totalPowerCost, powerCostByStage, accumulatedPowerCost, totalExpirationCost, expirationCostBySink, accumulatedExpirationCost, graphProjection)
+				Log(totalPowerCost, powerCostByStage, accumulatedPowerCost, expirationCost, accumulatedExpirationCost, graphProjection)
 		} {
 			(_, log) => log.graphProjection.map(_.inputQueueAtEnd)
 		}

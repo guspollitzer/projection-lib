@@ -6,6 +6,7 @@ import graph.*
 import queue.{*, given}
 import resource.*
 import time.*
+import util.SmartArray
 import workflow.*
 
 
@@ -28,6 +29,10 @@ object ExpirationCostAtCompletionPieceCalculator {
 	/** The implementation should calculate the cost of that an element's processing is completed after its deadline. */
 	type ExpirationCostFunc = (channel: Channel, path: Path) => Money
 	case class SinkParams(expirationExpectancyFunc: ExpirationExpectancyFunc, expirationCostFunc: ExpirationCostFunc)
+
+	/** The distribution of the total expiration cost among the stages and pieces that were involved. */
+	type InvolvementGrid = SmartArray[Array[Money]]
+	case class ExpirationCost(total: Money, bySink: Map[SinkN[?], Money], involvedPiecesAndStagesGrid: InvolvementGrid)
 }
 
 import ExpirationCostAtCompletionPieceCalculator.*
@@ -38,7 +43,6 @@ class ExpirationCostAtCompletionPieceCalculator[CG <: ClosedGraph](val closedGra
 	/** Calculates the expected value of the cost due to expired elements (those whose processing is completed after the deadline), corresponding to the elements for which, according to the calculated projection, its processing will be completed during the specified interval.
 	  * The specified interval should be a piece of the [[StaggeredAlgebra]] used to calculate the projection.
 	  *
-	  * Design note: It was chosen to use a traveler instead of returning a collection, just for efficiency.
 	  * @param projectionDate the instant when the projection was made.
 	  * @param pieceStart the lower bound of the time interval.
 	  * @param pieceEnd the upper bound of the time interval.
@@ -49,23 +53,40 @@ class ExpirationCostAtCompletionPieceCalculator[CG <: ClosedGraph](val closedGra
 		pieceStart: Instant,
 		pieceEnd: Instant,
 		amountOfCompletionsBySink: SinkN[?] => Queue,
-	): Map[SinkN[?], Money] = {
+	): ExpirationCost = {
 
-		for (sink, sinkParams) <- sinksParams yield {
+		var totalCost = ZERO_MONEY;
+		val involvedPiecesAndStagesGrid: InvolvementGrid = new SmartArray(new Array[Money](closedGraph.size));
+
+		val costBySink = for (sink, sinkParams) <- sinksParams yield {
 
 			def traveler(fragmentStart: Instant, fragmentEnd: Instant, heap: Heap, heapLoad: Quantity, accumulatedLoad: Quantity, expectedValueOfExpirationCostAccumulator: Money): Money = {
+				// calculate the expiration cost associated to the iterated heap
 				var expectedValueOfExpirationCostCorrespondingToHeap: Money = ZERO_MONEY;
-				for (category, quantity) <- heap do {
+				for (category, quantity) <- heap.iterator do {
 					val expectedValueOfAmountOfExpiredElements: Quantity = sinkParams.expirationExpectancyFunc(projectionDate, fragmentStart, fragmentEnd, quantity, category.priority);
 					val singleElementExpirationCost: Money = sinkParams.expirationCostFunc(category.channel, category.path);
 					val expectedValueOfExpirationCost: Money = singleElementExpirationCost.multipliedBy(expectedValueOfAmountOfExpiredElements);
 					expectedValueOfExpirationCostCorrespondingToHeap = expectedValueOfExpirationCostCorrespondingToHeap.plus(expectedValueOfExpirationCost)
 				}
-				expectedValueOfExpirationCostAccumulator.plus(expectedValueOfExpirationCostCorrespondingToHeap)
+
+				// update the involvement grid
+				val weight = 1d / heap.history.size;
+				for Heap.Consumed(atStage, atPiece) <- heap.history do {
+					val involvedStagesAtPiece = involvedPiecesAndStagesGrid(atPiece);
+					involvedStagesAtPiece(atStage.ordinal) = involvedStagesAtPiece(atStage.ordinal).plus(expectedValueOfExpirationCostCorrespondingToHeap).multipliedBy(weight)
+				}
+
+				expectedValueOfExpirationCostAccumulator.plus(expectedValueOfExpirationCostCorrespondingToHeap);
 			}
 
 			val expectedValueOfExpirationTotalCostCorrespondingToSink: Money = amountOfCompletionsBySink(sink).travelConsumptionFragments[Money](pieceStart, pieceEnd, ZERO_MONEY)(traveler);
+			totalCost = totalCost.plus(expectedValueOfExpirationTotalCostCorrespondingToSink);
 			sink -> expectedValueOfExpirationTotalCostCorrespondingToSink
 		}
+
+		ExpirationCost(totalCost, costBySink, involvedPiecesAndStagesGrid)
 	}
+
+
 }
