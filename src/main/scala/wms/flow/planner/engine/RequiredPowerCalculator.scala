@@ -99,11 +99,11 @@ class RequiredPowerCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val pie
 
 						val desiredLoadAtEndingInstantAtStageAtPiece: Quantity = desiredBacklogAtEndingInstantAtStage.getPieceMeanAt(pieceIndex) match {
 							case Maximal =>
-								backlogCapacity(stage);
+								backlogCapacity(stage).toFloat;
 
 							case Minimal(duration) =>
 								scala.math.min(
-									backlogCapacity(stage),
+									backlogCapacity(stage).toFloat,
 									trajectoryOfLoadDemandedByDownstream.integrate(end, end + duration, true)
 								);
 						}

@@ -3,18 +3,19 @@ package util
 
 import scala.collection.mutable
 
-class IntArrayBuffer(initialCapacity: Int = 256) {
+class SortedIntArrayBuffer(initialCapacity: Int = 256) {
 	private var length: Int = 0;
 	private var capacity: Int = initialCapacity
 	private var array: Array[Int] = new Array(capacity);
 
 	def size: Int = length
 
-	def addOne(value: Int): Unit = {
+	def addOneInOrder(value: Int): Unit = {
+		if length > 0 && value <= array(length - 1) then throw IllegalArgumentException(s"The added value should be greater than the existing ones: value=$value, existing=${array.toSeq}.");
 		if length == capacity then {
 			capacity *= 2;
 			val newArray = new Array[Int](capacity);
-			array.copyToArray(newArray);
+			java.lang.System.arraycopy(array, 0, newArray, 0, length);
 			array = newArray
 		}
 		array(length) = value;
@@ -22,7 +23,9 @@ class IntArrayBuffer(initialCapacity: Int = 256) {
 	}
 
 	def addAll(valueIterator: Iterator[Int]): Unit = {
-		valueIterator.foreach(addOne)
+		val values = valueIterator.toArray[Int];
+		java.util.Arrays.sort(values);
+		values.foreach(addOneInOrder);
 	}
 
 	def apply(index: Int): Int = array(index);
@@ -30,11 +33,7 @@ class IntArrayBuffer(initialCapacity: Int = 256) {
 	def iterator: Iterator[Int] = array.iterator;
 
 	def contains(value: Int): Boolean = {
-		var index = array.length - 1;
-		while index >= 0 && array(index) != value do {
-			index -= 1;
-		}
-		index >= 0
+		java.util.Arrays.binarySearch(array, value) >= 0
 	}
 
 	def containsAny(other: IArray[Int]): Boolean = {

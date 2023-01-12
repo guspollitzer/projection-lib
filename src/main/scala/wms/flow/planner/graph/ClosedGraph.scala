@@ -52,6 +52,10 @@ class ClosedGraph private[ClosedGraph](stages: IndexedSeq[Stage]) {
 	/** Creates a new [[Mapping]] that associates every stage of this [[ClosedGraph]] to the result of applying the received function to the corresponding stage */
 	def createMapping[A](f: Stage => A): Mapping[A] = new Mapping[A](closedGraph.stages.map(f))
 
+	def fromIterable[A](iterable: Iterable[A]): Mapping[A] = {
+		assert(iterable.size == stages.size);
+		Mapping(iterable.toIndexedSeq)
+	};
 	/** Combines two [[Mapping]]s
 	  *
 	  * @return a new [[Mapping]] in which, for every stage s, its associated value is {{{ f(ma.get(s), mb.get(s)) }}} */
@@ -87,6 +91,8 @@ class ClosedGraph private[ClosedGraph](stages: IndexedSeq[Stage]) {
 		def forEachWithStage(f: (Stage, A) => Unit): Unit = stages.foreach { stage => f(stage, values(stage.ordinal)) }
 
 		def iterator: Iterator[A] = values.iterator
+
+		def toSeq: Seq[A] = values
 
 		def iteratorWithStage: Iterator[(Stage, A)] = stages.iterator.map { stage => (stage, values(stage.ordinal)) }
 

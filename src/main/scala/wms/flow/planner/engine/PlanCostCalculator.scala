@@ -31,7 +31,14 @@ class PlanCostCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 	import closedGraph.*
 	import piecewiseAlgebra.*
 
-	case class Log(totalPowerCost: Money, powerCostByStage: Mapping[Money], accumulatedPowerCost: Money, expirationCost: ExpirationCost, accumulatedExpirationCost: Money, graphProjection: Mapping[FlowProjectionPieceCalculator.StageProjection])
+	case class Log(
+		totalPowerCost: Money, 
+		powerCostByStage: Mapping[Money], 
+		accumulatedPowerCost: Money, 
+		expirationCost: ExpirationCost, 
+		accumulatedExpirationCost: Money, 
+		graphProjection: Mapping[FlowProjectionPieceCalculator.StageProjection]
+	)
 
 	private val flowProjectionPieceCalculator = new FlowProjectionPieceCalculator[closedGraph.type](closedGraph);
 	private val expirationCostAtCompletionPieceCalculator = new ExpirationCostAtCompletionPieceCalculator[closedGraph.type](closedGraph)(sinkCostParams);
@@ -52,6 +59,7 @@ class PlanCostCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 		upstreamTrajectoryBySource: SourceN[?] => Trajectory[Queue],
 		powerPlan: PowerPlan[closedGraph.type],
 	): Trajectory[Log] = {
+		
 		var accumulatedExpirationCost: Money = ZERO_MONEY;
 		var accumulatedPowerCost: Money = ZERO_MONEY;
 
@@ -63,9 +71,13 @@ class PlanCostCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 				accumulatedPowerCost = accumulatedPowerCost.plus(totalPowerCost);
 
 				val power = powerPlan.getPowerAt(pieceIndex);
-				val graphProjection = flowProjectionPieceCalculator.calc(pieceIndex, inputQueueAtStart, power)(source => upstreamTrajectoryBySource(source).getWholePieceIntegralAt(pieceIndex));
+				val graphProjection = flowProjectionPieceCalculator.calc(pieceIndex, inputQueueAtStart, power) {
+					source => upstreamTrajectoryBySource(source).getWholePieceIntegralAt(pieceIndex)
+				};
 
-				val expirationCost = expirationCostAtCompletionPieceCalculator.calcExpirationCost(piecewiseAlgebra.firstPieceStartingInstant, start, end, graphProjection.map { _.processed });
+				val processed = graphProjection.map(_.processed);
+				val expirationCost = expirationCostAtCompletionPieceCalculator.calcExpirationCost(piecewiseAlgebra.firstPieceStartingInstant, start, end, processed);
+				
 				accumulatedExpirationCost = accumulatedExpirationCost.plus(expirationCost.total);
 
 				Log(totalPowerCost, powerCostByStage, accumulatedPowerCost, expirationCost, accumulatedExpirationCost, graphProjection)

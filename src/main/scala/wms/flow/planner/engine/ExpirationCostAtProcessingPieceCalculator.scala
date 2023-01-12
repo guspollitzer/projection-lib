@@ -15,6 +15,7 @@ object ExpirationCostAtProcessingPieceCalculator {
 
 import ExpirationCostAtProcessingPieceCalculator.*
 
+/** @deprecated it is not implemented because it is easier to calculate it at completion piece. See [[ExpirationCostAtCompletionPieceCalculator]]."  */
 class ExpirationCostAtProcessingPieceCalculator[CG <: ClosedGraph](val closedGraph: CG)(sinksParams: Map[SinkN[?], StageInfo]) {
 	import closedGraph.*
 
