@@ -56,7 +56,7 @@ class PlanCostCalculatorDeferred[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 
 
 	def defineParams: Params = {
-		val powerPlan = buildTrajectory { pieceIndex => closedGraph.createMapping { stage => sheet.addParam[PowerAndCost] } }
+		val powerPlan = buildTrajectory { pieceIndex => closedGraph.createMapping { stage => sheet.addParam[PowerAndCost]() } }
 		Params(powerPlan)
 	}
 

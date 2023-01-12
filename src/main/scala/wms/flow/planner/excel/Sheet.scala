@@ -36,7 +36,7 @@ class Sheet(maxDependencyCycleWidth: Int) { thisSheet =>
 		watchdog = cells.size
 	}
 
-	def addParam[A]: Ref[A] = {
+	def addParam[A](): Ref[A] = {
 		val paramRef = ~numberOfParams
 		numberOfParams += 1;
 		paramRef
