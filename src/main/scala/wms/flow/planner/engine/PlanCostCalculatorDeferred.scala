@@ -43,6 +43,7 @@ class PlanCostCalculatorDeferred[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 	case class Params(powerPlan: Trajectory[Mapping[Ref[PowerAndCost]]])
 
 	case class Log(
+		powerParams: Mapping[Ref[PowerAndCost]],
 		totalPowerCost: Money,
 		powerCostByStage: Mapping[Money],
 		accumulatedPowerCost: Money,
@@ -55,17 +56,17 @@ class PlanCostCalculatorDeferred[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 	private val expirationCostAtCompletionPieceCalculator = new ExpirationCostAtCompletionPieceCalculator[closedGraph.type](closedGraph)(sinkCostParams);
 
 
-	def defineParams: Params = {
-		val powerPlan = buildTrajectory { pieceIndex => closedGraph.createMapping { stage => sheet.addParam[PowerAndCost]() } }
-		Params(powerPlan)
-	}
 
-	def calc(
+	def buildCalcPlayground(
 		initialInputQueue: Mapping[Queue],
-		upstreamTrajectoryBySource: SourceN[?] => Trajectory[Queue],
-		excelParams: Params
+		upstreamTrajectoryBySource: SourceN[?] => Trajectory[Queue]
 	): Trajectory[Ref[Log]] = {
 
+		// Add all the [[Sheet]] parameters. 
+		val powerPlanParams: Trajectory[Mapping[Ref[PowerAndCost]]] = buildTrajectory { _ => closedGraph.createMapping { stage => sheet.addParam[PowerAndCost]() } }
+
+		// Add all the [[Sheet]] cells - BEGIN
+		
 		val zeroMoneyRef: Ref[Money] = sheet.of(ZERO_MONEY);
 		var previousPieceAccumulatedPowerCostRef: Ref[Money] = zeroMoneyRef;
 		var previousPieceAccumulatedExpirationCostRef: Ref[Money] = zeroMoneyRef;
@@ -75,13 +76,13 @@ class PlanCostCalculatorDeferred[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 
 				sheet.dependencyCycleWidthWatchdog();
 
-				val powerAndCostRefByStage = excelParams.powerPlan.getPieceMeanAt(pieceIndex);
+				val powerAndCostRefByStage = powerPlanParams.getPieceMeanAt(pieceIndex);
 				val piecePowerCostRef: Ref[Money] = powerAndCostRefByStage.toSeq.leftFold(zeroMoneyRef) { (acc, e) => acc.plus(e.cost) };
 				val accumulatedPowerCostRef: Ref[Money] = sheet.map2(previousPieceAccumulatedPowerCostRef, piecePowerCostRef) { _ plus _ };
 				previousPieceAccumulatedPowerCostRef = accumulatedPowerCostRef;
 
 				val powerAndCostByStageOrdinalRef: Ref[Iterable[PowerAndCost]] = powerAndCostRefByStage.toSeq.sequence;
-				val graphProjectionRef = sheet.map2(inputQueueAtStartRef, powerAndCostByStageOrdinalRef) {
+				val graphProjectionRef: Ref[Mapping[StageProjection]] = sheet.map2(inputQueueAtStartRef, powerAndCostByStageOrdinalRef) {
 					(inputQueueAtStart, powerAndCostByStageOrdinal) =>
 						flowProjectionPieceCalculator.calc(pieceIndex, inputQueueAtStart, closedGraph.fromIterable(powerAndCostByStageOrdinal.map(_.power))) {
 							source => upstreamTrajectoryBySource(source).getWholePieceIntegralAt(pieceIndex)
@@ -100,10 +101,11 @@ class PlanCostCalculatorDeferred[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 
 				sheet.map6(piecePowerCostRef, powerAndCostByStageOrdinalRef, accumulatedPowerCostRef, expirationCostRef, accumulatedExpirationCostRef, graphProjectionRef) {
 					(piecePowerCost, powerAndCostByStageOrdinal, accumulatedPowerCost, expirationCost, accumulatedExpirationCost, graphProjection) =>
-					Log(piecePowerCost, closedGraph.fromIterable(powerAndCostByStageOrdinal.map(_.cost)), accumulatedPowerCost, expirationCost, accumulatedExpirationCost, graphProjection)
+					Log(powerAndCostRefByStage, piecePowerCost, closedGraph.fromIterable(powerAndCostByStageOrdinal.map(_.cost)), accumulatedPowerCost, expirationCost, accumulatedExpirationCost, graphProjection)
 				};
 		} {
 			(_, log) => log.map(_.graphProjection.map(_.inputQueueAtEnd))
 		}
+		// Add all the [[Sheet]] cells - END
 	}
 }
