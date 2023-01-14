@@ -8,15 +8,20 @@ import util.TypeId
 trait PiecewiseAlgebra {
 
 	trait Trajectory[+A] {
-		/** Gives the integral of the trajectory at the specified piece.
-		  * Valid for integration-friendly trajectories. */
-		def getWholePieceIntegralAt(index: PieceIndex): A
-		
-		/** Gives the mean value of the trajectory at the specified piece.
-		  * Valid for non integration-friendly trajectories.  */
-		def getPieceMeanAt(index: PieceIndex): A = getWholePieceIntegralAt(index)
 
-		def integrate(from: Instant, to: Instant, extrapolate: Boolean)(using aTypeId: TypeId[A]): A
+		/** Gives the value of the trajectory at the specified piece.  */
+		def getValueAt(index: PieceIndex): A
+
+		/** Calculates the definite integral of this trajectory in the specified interval assuming the value at each piece represents the definite integral of the trajectory on said piece.
+		  * For example, if the values at each piece of this trajectory represented the value at said piece of the staggered function we want to integrate, then we first have to map said values to whole piece integrals like this:
+		  * {{{ this.richMap { (_, start, end, value) => value * (end - start) }.integrate(from, to, extrapolate) } }}}
+		  *
+		  * @param from the lower limit of the interval on which to integrate
+		  * @param to the upper limit of the interval on which to integrate
+		  * @param extrapolateLastPiece when true the interval bounds may be greater than the end of the last piece of this piecewise trajectory, and the result is the same than the one of a trajectory equal to this but with the last piece repeated indefinitely. */
+		def integrate(from: Instant, to: Instant, extrapolateLastPiece: Boolean)(using aTypeId: TypeId[A]): A
+
+		def foreach(f: A => Unit): Unit
 
 		def map[B](f: A => B): Trajectory[B]
 

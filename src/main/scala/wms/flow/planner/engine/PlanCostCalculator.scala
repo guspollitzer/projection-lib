@@ -72,7 +72,7 @@ class PlanCostCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 
 				val power = powerPlan.getPowerAt(pieceIndex);
 				val graphProjection = flowProjectionPieceCalculator.calc(pieceIndex, inputQueueAtStart, power) {
-					source => upstreamTrajectoryBySource(source).getWholePieceIntegralAt(pieceIndex)
+					source => upstreamTrajectoryBySource(source).getValueAt(pieceIndex)
 				};
 
 				val processed = graphProjection.map(_.processed);

@@ -42,7 +42,7 @@ class RequiredPowerCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val pie
 				if consumption.shortage == 0 || index >= numberOfPieces || consecutiveEmptyFollowingPiecesQueues > MAX_CONSECUTIVE_EMPTY_QUEUES then consumption
 				else {
 					// Can't consume what does not exist yet. So, include only the backlog that exists at the moment of the simulated consumption.
-					val followingPieceQueue: Queue = trajectory.getWholePieceIntegralAt(index).filterByCategory(_.bornPieceIndex <= maxBornPieceIndex);
+					val followingPieceQueue: Queue = trajectory.getValueAt(index).filterByCategory(_.bornPieceIndex <= maxBornPieceIndex);
 					// TODO aunque dudo que sea necesario, esto se podría optimizar sumando los `Consumption` ya calculados en lugar de recalcular el `Consumption` desde el comienzo cada vez.
 					loop(index + 1, concatenation.mergedWith(followingPieceQueue), if followingPieceQueue.isEmpty then consecutiveEmptyFollowingPiecesQueues + 1 else 0);
 				}
@@ -97,7 +97,7 @@ class RequiredPowerCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val pie
 				val requiredPowerTrajectory = buildTrajectory[Queue, RequiredPowerAtPiece](initialBacklogAtStage) {
 					(backlogAtPieceStart, pieceIndex, start, end) =>
 
-						val desiredLoadAtEndingInstantAtStageAtPiece: Quantity = desiredBacklogAtEndingInstantAtStage.getPieceMeanAt(pieceIndex) match {
+						val desiredLoadAtEndingInstantAtStageAtPiece: Quantity = desiredBacklogAtEndingInstantAtStage.getValueAt(pieceIndex) match {
 							case Maximal =>
 								backlogCapacity(stage).toFloat;
 
@@ -108,7 +108,7 @@ class RequiredPowerCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](val pie
 								);
 						}
 
-						val queueDemandedByDownstream: Queue = trajectoryOfQueueDemandedByDownstream.getWholePieceIntegralAt(pieceIndex);
+						val queueDemandedByDownstream: Queue = trajectoryOfQueueDemandedByDownstream.getValueAt(pieceIndex);
 						val loadDemandedByDownstream: Quantity = queueDemandedByDownstream.load;
 
 						// Calculate the minimum number of elements that should be processed during this piece-interval to avoid the backlog gets empty. Which is equal to the downstream demand excluding the elements that were already processed during a previous piece-interval.

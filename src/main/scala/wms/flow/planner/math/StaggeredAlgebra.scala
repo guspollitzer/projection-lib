@@ -58,7 +58,7 @@ class StaggeredAlgebra private(
 
 	abstract class StaggeredTrajectory[+A] extends Trajectory[A] {
 
-		override def integrate(from: Instant, to: Instant, extrapolate: Boolean)(using aTypeId: TypeId[A]): A = {
+		override def integrate(from: Instant, to: Instant, extrapolateLastPiece: Boolean)(using aTypeId: TypeId[A]): A = {
 			assert(from <= to)
 
 			given concatOps: Concatenable[A] = facOpsSummoner.summonConcatenableFor[A]
@@ -67,16 +67,16 @@ class StaggeredAlgebra private(
 
 			@tailrec
 			def loop(pieceIndex: PieceIndex, pieceStart: Instant, fragmentStart: Instant, accum: A): A = {
-				if extrapolate && pieceIndex == numberOfPieces then {
+				if extrapolateLastPiece && pieceIndex == numberOfPieces then {
 					val pieceEnd = pieceStart
-					val lastPieceWholePieceIntegral = getWholePieceIntegralAt(numberOfPieces - 1)
+					val lastPieceWholePieceIntegral = getValueAt(numberOfPieces - 1)
 					accum ++ lastPieceWholePieceIntegral.takeFraction((to - fragmentStart)/(pieceEnd - getStartOfPiece(numberOfPieces - 1) ))
 				} else if pieceIndex < 0 || numberOfPieces <= pieceIndex then {
 					throw new IllegalArgumentException(
-						s"The trajectory is not defined in some part of the interval: pieceIndex:$pieceIndex, from:$from, to:$to, extrapolate:$extrapolate, firstPieceStartingInstant:$firstPieceStartingInstant, lastPieceEndingInstant:${getWholePieceIntegralAt(numberOfPieces-1)}"
+						s"The trajectory is not defined in some part of the interval: pieceIndex:$pieceIndex, from:$from, to:$to, extrapolate:$extrapolateLastPiece, firstPieceStartingInstant:$firstPieceStartingInstant, lastPieceEndingInstant:${getValueAt(numberOfPieces-1)}"
 					)
 				} else {
-					val wholePieceIntegral = getWholePieceIntegralAt(pieceIndex)
+					val wholePieceIntegral = getValueAt(pieceIndex)
 					val pieceEnd = pieceEndingInstantByIndex(pieceIndex)
 					if to <= pieceEnd
 					then {
@@ -107,6 +107,10 @@ class StaggeredAlgebra private(
 			}
 		}
 
+		override def foreach(f: A => Unit): Unit = {
+			for pieceIndex <- 0 until numberOfPieces do f(getValueAt(pieceIndex))
+		}
+
 		override def map[B](f: A => B): StaggeredTrajectory[B] = new MapOne(this)(f)
 
 		override def richMap[B](f: (index: PieceIndex, startingInstant: Instant, endingInstant: Instant, wholePieceIntegral: A) => B): StaggeredTrajectory[B] = {
@@ -116,44 +120,44 @@ class StaggeredAlgebra private(
 
 	protected class Eager[+A](wholePieceIntegralByIndex: IndexedSeq[A]) extends StaggeredTrajectory[A] {
 
-		override def getWholePieceIntegralAt(index: PieceIndex): A = wholePieceIntegralByIndex(index)
+		override def getValueAt(index: PieceIndex): A = wholePieceIntegralByIndex(index)
 	}
 
-	protected class Lazy[+A](wholePieceIntegralByIndex: LazyList[A]) extends StaggeredTrajectory[A] {
+	protected class Lazy[+A](valueByPieceIndex: LazyList[A]) extends StaggeredTrajectory[A] {
 		/** TODO Optimize this method: take advantage of what was done in the call with an index less than or equal to the one received now.  */
-		override def getWholePieceIntegralAt(index: PieceIndex): A = wholePieceIntegralByIndex(index)
+		override def getValueAt(index: PieceIndex): A = valueByPieceIndex(index)
 	}
 
 	protected class Deferred[+A](func: (pieceIndex: PieceIndex) => A) extends StaggeredTrajectory[A] {
 
-		override def getWholePieceIntegralAt(index: PieceIndex): A = func(index)
+		override def getValueAt(index: PieceIndex): A = func(index)
 	}
 
 	protected class MapOne[+A, +B](base: Trajectory[A])(func: A => B) extends StaggeredTrajectory[B] {
 
-		override def getWholePieceIntegralAt(index: PieceIndex): B = func(base.getWholePieceIntegralAt(index))
+		override def getValueAt(index: PieceIndex): B = func(base.getValueAt(index))
 	}
 
 	protected class MapTwo[+A, +B, +C](ta: Trajectory[A], tb: Trajectory[B])(biFunc: (A, B) => C) extends StaggeredTrajectory[C] {
 
-		override def getWholePieceIntegralAt(index: PieceIndex): C = biFunc(ta.getWholePieceIntegralAt(index), tb.getWholePieceIntegralAt(index))
+		override def getValueAt(index: PieceIndex): C = biFunc(ta.getValueAt(index), tb.getValueAt(index))
 	}
 
 	protected class RichOne[+A, +B](base: Trajectory[A])(multiFunc: (index: PieceIndex, startingInstant: Instant, endingInstant: Instant, wholePieceIntegral: A) => B) extends StaggeredTrajectory[B] {
 
-		override def getWholePieceIntegralAt(index: PieceIndex): B = {
+		override def getValueAt(index: PieceIndex): B = {
 			val startingInstant = if index == 0 then firstPieceStartingInstant else pieceEndingInstantByIndex(index - 1)
 			val endingInstant = pieceEndingInstantByIndex(index)
-			multiFunc(index, startingInstant, endingInstant, base.getWholePieceIntegralAt(index))
+			multiFunc(index, startingInstant, endingInstant, base.getValueAt(index))
 		}
 	}
 
 	protected class RichTwo[+A, +B, +C](ta: Trajectory[A], tb: Trajectory[B])(multiFunc: (index: PieceIndex, startingInstant: Instant, endingInstant: Instant, a: A, b: B) => C) extends StaggeredTrajectory[C] {
 
-		override def getWholePieceIntegralAt(index: PieceIndex): C = {
+		override def getValueAt(index: PieceIndex): C = {
 			val startingInstant = if index == 0 then firstPieceStartingInstant else pieceEndingInstantByIndex(index - 1)
 			val endingInstant = pieceEndingInstantByIndex(index)
-			multiFunc(index, startingInstant, endingInstant, ta.getWholePieceIntegralAt(index), tb.getWholePieceIntegralAt(index))
+			multiFunc(index, startingInstant, endingInstant, ta.getValueAt(index), tb.getValueAt(index))
 		}
 	}
 

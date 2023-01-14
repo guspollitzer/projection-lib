@@ -1,6 +1,7 @@
 package wms.flow.planner
 package excel
 
+import com.sun.tools.classfile.Dependencies
 import util.SortedIntArrayBuffer
 import wms.flow.planner.excel.Sheet.NOT_CALCULATED
 
@@ -22,7 +23,7 @@ class Sheet(maxDependencyCycleWidth: Int) {
 	import Sheet.*
 
 	private type Reference = Int
-	/** A reference to, or identifier of, a parameter or result element cell.  */
+	/** A reference to, or identifier of, a parameter or result element cell. */
 	opaque type Ref[T] = Reference
 
 	extension[T] (ref: Ref[T]) {
@@ -88,7 +89,7 @@ class Sheet(maxDependencyCycleWidth: Int) {
 
 	/** Adds a result element cell whose value is the result of applying the specified two-parameters function to the values contained in the parameters and/or cells referenced by `refA` and `refB`.
 	  *
-	  * @param fuction the two-parameters function used to calculate the value for the created cell.
+	  * @param function the two-parameters function used to calculate the value for the created cell.
 	  * @param refA the reference to the cell that contains the first argument.
 	  * @tparam A the type of the first parameter of the received function.
 	  * @param refB the reference to the cell that contains the second argument.
@@ -205,26 +206,26 @@ class Sheet(maxDependencyCycleWidth: Int) {
 		/** Obtains the value of the parameter or resulting product-element referenced by the received reference. */
 		def get[V](reference: Ref[V]): V
 
-		/** Creates a new [[Evaluation]] in which the arguments (of the function represented by this [[Sheet]]) are the same than this [[Evaluation]] except for the specified ones.  */
+		/** Creates a new [[Evaluation]] in which the arguments (of the function represented by this [[Sheet]]) are the same than this [[Evaluation]] except for the specified ones. */
 		def argumentsUpdated(argumentByParamRef: immutable.Map[Reference, Any]): Evaluation
 
 		protected[Sheet] def wasCalculated(cellReference: Reference): Boolean
 
 		protected[Sheet] def copyArgumentsTo(target: Array[Any]): Unit
 
-		protected[Sheet] def copyCellValuesTo(target: Array[Any], len: Int): Unit
+		protected[Sheet] def copyCellValuesTo(target: Array[Any], from: Reference, len: Int): Unit
 
 		protected[Sheet] def depthLevel: Int
 
 		/** Finds the references of the cells that depend, directly or indirectly, on the received references, including themselves.
 		  *
 		  * @return the references of the cells that depend on the received references, including themselves. */
-		protected[Sheet] def findCalculatedDependantsOf(referenceIterator: Iterator[Reference]): SortedIntArrayBuffer = {
+		protected[Sheet] def findCalculatedDependantsOf(referenceIterator: Iterator[Reference], startingFrom: Reference): SortedIntArrayBuffer = {
 			val dependantReferences = new SortedIntArrayBuffer(256);
 			dependantReferences.addAll(referenceIterator);
 
 			var consecutiveNotCalculatedCount = 0;
-			var cellIndex = 0;
+			var cellIndex = startingFrom;
 			while cellIndex < cells.size && consecutiveNotCalculatedCount <= maxDependencyCycleWidth do {
 				if wasCalculated(cellIndex) then {
 					consecutiveNotCalculatedCount = 0;
@@ -238,6 +239,11 @@ class Sheet(maxDependencyCycleWidth: Int) {
 				cellIndex += 1;
 			}
 			dependantReferences
+		}
+
+		protected[Sheet] def findFirstDependantOf(dependenciesIterator: Iterator[Reference]): Option[Reference] = {
+			val dependencies: Set[Reference] = dependenciesIterator.toSet;
+			cells.indices.find { index => cells(index).dependencies.exists(dependencies.contains) }
 		}
 	}
 
@@ -284,16 +290,23 @@ class Sheet(maxDependencyCycleWidth: Int) {
 			java.lang.System.arraycopy(this.paramValues, 0, target, 0, numberOfParams)
 		}
 
-		override protected[Sheet] def copyCellValuesTo(target: Array[Any], len: Int): Unit = {
-			java.lang.System.arraycopy(this.cellValues, 0, target, 0, len);
+		override protected[Sheet] def copyCellValuesTo(target: Array[Any], from: Reference, len: Int): Unit = {
+			java.lang.System.arraycopy(this.cellValues, from, target, 0, len);
 		}
 
 		override protected[Sheet] def depthLevel: Reference = 0
 	}
 
+	/** An [[Evaluation]] that is backed by the one it was originated from.
+	  *
+	  * @param backingEvaluation the [[Evaluation]] from which this [[Evaluation]] originated.
+	  * @param overriddenArgumentsByParamRef the arguments that differ respect to the backing [[Evaluation]].
+	  * @param lowerDependantIndex index of the first cell that depends on any of the overridden arguments.
+	  * @param upperCellValues the values of the cells whose index is greater than or equal to the index of the first cell that depends on any of the overridden arguments.
+	  * @param depthLevel the number of [[Evaluation]]s that are backing this instance. */
 	private class BackedEvaluation(
-		backingEvaluator: Evaluation,
-		overriddenParamValueByReference: immutable.Map[Reference, Any],
+		backingEvaluation: Evaluation,
+		overriddenArgumentsByParamRef: immutable.Map[Reference, Any],
 		lowerDependantIndex: Int,
 		upperCellValues: Array[Any],
 		val depthLevel: Int
@@ -301,7 +314,7 @@ class Sheet(maxDependencyCycleWidth: Int) {
 
 		override def wasCalculated(cellReference: Reference): Boolean = {
 			if cellReference < lowerDependantIndex then {
-				backingEvaluator.wasCalculated(cellReference)
+				backingEvaluation.wasCalculated(cellReference)
 			} else {
 				upperCellValues(cellReference - lowerDependantIndex).asInstanceOf[AnyRef] ne NOT_CALCULATED
 			}
@@ -310,12 +323,12 @@ class Sheet(maxDependencyCycleWidth: Int) {
 		override def get[V](reference: Ref[V]): V = {
 			val value =
 				if reference < 0 then {
-					overriddenParamValueByReference.get(reference) match {
-						case None => backingEvaluator.get(reference)
+					overriddenArgumentsByParamRef.get(reference) match {
+						case None => backingEvaluation.get(reference)
 						case Some(overriddenParamValue) => overriddenParamValue
 					}
 				} else if reference < lowerDependantIndex then {
-					backingEvaluator.get(reference)
+					backingEvaluation.get(reference)
 				} else {
 					val offset = reference - lowerDependantIndex
 					var cellValue = upperCellValues(offset);
@@ -332,16 +345,18 @@ class Sheet(maxDependencyCycleWidth: Int) {
 			buildEvaluatorBasedOnAnother(this, paramValueByReference)
 		}
 
-		override protected[Sheet] def copyArgumentsTo(paramValues: Array[Any]): Unit = {
-			backingEvaluator.copyArgumentsTo(paramValues);
-			overriddenParamValueByReference.foreachEntry { (reference, value) => paramValues(reference) = value }
+		override protected[Sheet] def copyArgumentsTo(target: Array[Any]): Unit = {
+			backingEvaluation.copyArgumentsTo(target);
+			overriddenArgumentsByParamRef.foreachEntry { (reference, value) => target(reference) = value }
 		}
 
-		override protected[Sheet] def copyCellValuesTo(cellValues: Array[Any], len: Reference): Unit = {
-			backingEvaluator.copyCellValuesTo(cellValues, scala.math.min(len, lowerDependantIndex));
+		override protected[Sheet] def copyCellValuesTo(target: Array[Any], from: Reference, len: Int): Unit = {
 			val diff = len - lowerDependantIndex;
 			if diff > 0 then {
-				java.lang.System.arraycopy(upperCellValues, 0, cellValues, lowerDependantIndex, diff);
+				backingEvaluation.copyCellValuesTo(target, from, lowerDependantIndex);
+				java.lang.System.arraycopy(upperCellValues, 0, target, lowerDependantIndex, diff);
+			} else {
+				backingEvaluation.copyCellValuesTo(target, from, len);
 			}
 		}
 	}
@@ -353,33 +368,80 @@ class Sheet(maxDependencyCycleWidth: Int) {
 		if overriddenParamValueByReference.isEmpty then {
 			backingEvaluator
 		} else {
-			val dependantReferences = backingEvaluator.findCalculatedDependantsOf(overriddenParamValueByReference.iterator.map(entry => entry._1));
-			val dependantCellReferencesIterator = dependantReferences.iterator.filter(_ >= 0);
-			val newLowerDependantIndex = if dependantCellReferencesIterator.isEmpty then cells.size else dependantCellReferencesIterator.next();
-			// if the maximum depth-level is reached or the memory consumption of a new BackedEvaluator is greater than of a new AutonomousEvaluator, then use a AutonomousEvaluator
-			if (
-				backingEvaluator.depthLevel >= MAX_DEPTH_LEVEL
-					|| overriddenParamValueByReference.size * MAP_ENTRY_COST_RELATIVE_TO_ARRAY_ELEMENT - newLowerDependantIndex > numberOfParams
-			) {
-				val newParamValues = Array.ofDim[Any](numberOfParams);
-				backingEvaluator.copyArgumentsTo(newParamValues);
-				overriddenParamValueByReference.foreachEntry { (reference, value) => newParamValues(~reference) = value }
+			backingEvaluator.findFirstDependantOf(overriddenParamValueByReference.iterator.map(entry => entry._1)) match {
+				case None =>
+					backingEvaluator
 
-				val newCellValues = Array.ofDim[Any](cells.size);
-				backingEvaluator.copyCellValuesTo(newCellValues, cells.size);
-				newCellValues(0) = NOT_CALCULATED;
-				dependantCellReferencesIterator.foreach { newCellValues(_) = NOT_CALCULATED };
+				case Some(firstDependant) =>
+					val dependantReferences = backingEvaluator.findCalculatedDependantsOf(overriddenParamValueByReference.iterator.map(entry => entry._1), firstDependant);
+					val dependantCellReferencesIterator = dependantReferences.iterator.filter(_ >= 0);
+					// if the maximum depth-level is reached or the memory consumption of a new BackedEvaluator is greater than of a new AutonomousEvaluator, then use a AutonomousEvaluator
+					if (
+						backingEvaluator.depthLevel >= MAX_DEPTH_LEVEL
+							|| overriddenParamValueByReference.size * MAP_ENTRY_COST_RELATIVE_TO_ARRAY_ELEMENT - firstDependant > numberOfParams
+					) {
+						val newParamValues = Array.ofDim[Any](numberOfParams);
+						backingEvaluator.copyArgumentsTo(newParamValues);
+						overriddenParamValueByReference.foreachEntry { (reference, value) => newParamValues(~reference) = value }
 
-				new AutonomousEvaluation(IArray.unsafeFromArray(newParamValues), newCellValues)
-			} else {
-				val newUpperCellValues = Array.ofDim[Any](cells.size - newLowerDependantIndex);
-				backingEvaluator.copyCellValuesTo(newUpperCellValues, newLowerDependantIndex);
+						val newCellValues = Array.ofDim[Any](cells.size);
+						backingEvaluator.copyCellValuesTo(newCellValues, 0, cells.size);
+						dependantCellReferencesIterator.foreach { newCellValues(_) = NOT_CALCULATED };
 
-				newUpperCellValues(0) = NOT_CALCULATED;
-				dependantCellReferencesIterator.foreach { reference => newUpperCellValues(reference - newLowerDependantIndex) = NOT_CALCULATED };
+						new AutonomousEvaluation(IArray.unsafeFromArray(newParamValues), newCellValues)
+					} else {
+						val newUpperCellValues = Array.ofDim[Any](cells.size - firstDependant);
+						backingEvaluator.copyCellValuesTo(newUpperCellValues, firstDependant, newUpperCellValues.length);
 
-				new BackedEvaluation(backingEvaluator, overriddenParamValueByReference, newLowerDependantIndex, newUpperCellValues, backingEvaluator.depthLevel + 1);
+						dependantCellReferencesIterator.foreach { reference => newUpperCellValues(reference - firstDependant) = NOT_CALCULATED };
+
+						new BackedEvaluation(backingEvaluator, overriddenParamValueByReference, firstDependant, newUpperCellValues, backingEvaluator.depthLevel + 1);
+					}
 			}
 		}
 	}
 }
+
+
+//object Prueba {
+//
+//	case class Cell(dependencies: IArray[Int])
+//
+//	val dependencies = Set(-1, -2, -3, -4, -5, -6, -7, -8 ,-9)
+//
+//	def main(args: Array[String]): Unit = {
+//
+//		val cells = Array.fill[Cell](10000000)(new Cell(IArray(1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 11, 12, 13, 14, 15, 16, 17, 18, 19)));
+//
+//		for iteration <- 1 to 10 do {
+//			val elegantStart = System.nanoTime()
+//			val elegantResult = elegant(cells)
+//			val elegantDuration = (System.nanoTime() - elegantStart) / 1000000;
+//
+//			val fastStart: Long = System.nanoTime()
+//			val fastResult = fast(cells)
+//			val fastDuration = (System.nanoTime() - fastStart) / 1000000;
+//
+//			println(s"Iteration $iteration:\nelegant=\t$elegantDuration - $elegantResult\nfast=\t\t$fastDuration - $fastResult")
+//		}
+//	}
+//
+//	def elegant(cells: Array[Cell]): Option[Int] = {
+//		cells.indices.find { index => cells(index).dependencies.exists(dependencies.contains) }
+//	}
+//
+//	def fast(cells: Array[Cell]): Option[Int] = {
+//		var cellIndex = 0;
+//		while cellIndex < cells.length do {
+//			val cell = cells(cellIndex);
+//			var cellDependencyIndex = cell.dependencies.length;
+//			while cellDependencyIndex > 0 do {
+//				cellDependencyIndex -= 1;
+//				if dependencies.contains(cell.dependencies(cellDependencyIndex)) then return Some(cellIndex)
+//			}
+//			cellIndex += 1
+//		}
+//		None
+//	}
+//
+//}
