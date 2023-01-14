@@ -64,7 +64,7 @@ given QueueOps[PriorityQueue] with {
 		}
 
 		override def except(thatQueue: PriorityQueue): PriorityQueue = {
-			if thatQueue.isEmpty then thisQueue
+			if thisQueue.isEmpty || thatQueue.isEmpty then thisQueue
 			else {
 				val builder = TreeMap.newBuilder[Priority, Heap]
 				for (priority, thisHeap) <- thisQueue do {

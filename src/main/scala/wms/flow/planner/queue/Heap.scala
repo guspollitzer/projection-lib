@@ -78,7 +78,7 @@ class Heap(private[Heap] val quantityByCategory: Map[Category, Quantity], val hi
 						if newQuantity > 0 then builder.addOne(category -> newQuantity)
 				}
 			}
-			Heap(builder.result())
+			Heap(builder.result(), Nil) // TODO: include the history or not?
 		}
 	}
 }

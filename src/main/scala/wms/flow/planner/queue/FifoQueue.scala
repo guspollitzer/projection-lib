@@ -33,11 +33,41 @@ given QueueOps[FifoQueue] with {
 
 		override def mergedWith(thatQueue: FifoQueue): FifoQueue = {
 			// Not implemented because perhaps the case of two FIFO queues joining does not exist in Flow
-			// Because here we lack all the necessary information to know which element was  simplicity the implementation may assume that the two queue where generated simultaneously and at constant speed
+			// Because here we don't know which heap was generated first, the implementation may assume that the two queue where generated simultaneously and at constant speed.
 			???
 		}
 
-		override def except(thatQueue: FifoQueue): FifoQueue = thisQueue
+		override def except(thatQueue: FifoQueue): FifoQueue = {
+			if thisQueue.isEmpty || thatQueue.isEmpty then thisQueue
+			else {
+
+				@tailrec
+				def loopThis(unprocessedThis: FifoQueue, remainingThat: FifoQueue, alreadyProcessedThis: FifoQueue): FifoQueue = {
+					unprocessedThis match {
+						case Nil => alreadyProcessedThis
+						case headThis :: tailThis =>
+
+							@tailrec
+							def loopThat(unprocessedThat: FifoQueue, updatedHeadThis: Heap, alreadyProcessedThat: FifoQueue): (Heap, FifoQueue) = {
+								unprocessedThat match {
+									case Nil => (updatedHeadThis, alreadyProcessedThat)
+									case headThat :: tailThat =>
+										loopThat(
+											tailThat,
+											updatedHeadThis.without(headThat),
+											headThat.without(updatedHeadThis) :: alreadyProcessedThat
+										)
+								}
+							}
+
+							val (updatedHeapThis, newRemainingThat) = loopThat(remainingThat, headThis, Nil)
+							loopThis(tailThis, newRemainingThat, updatedHeapThis :: alreadyProcessedThis)
+					}
+				}
+
+				loopThis(thisQueue, thatQueue, Nil).reverse
+			}
+		}
 
 		override def consumed(quantityToConsume: Quantity)(using atStage: Stage, atPiece: PieceIndex): Consumption[FifoQueue] = {
 			assert(quantityToConsume >= 0)

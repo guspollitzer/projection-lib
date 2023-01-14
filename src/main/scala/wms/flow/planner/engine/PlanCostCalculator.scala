@@ -10,6 +10,7 @@ import time.*
 import util.*
 import workflow.*
 import ExpirationCostAtCompletionPieceCalculator.ExpirationCost
+import FlowProjectionPieceCalculator.StageProjection
 
 
 object PlanCostCalculator {
@@ -31,12 +32,12 @@ class PlanCostCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 	import closedGraph.*
 	import piecewiseAlgebra.*
 
-	case class Log(
-		totalPowerCost: Money, 
-		powerCostByStage: Mapping[Money], 
-		accumulatedPowerCost: Money, 
-		expirationCost: ExpirationCost, 
-		accumulatedExpirationCost: Money, 
+	case class ResultAtPiece(
+		totalPowerCost: Money,
+		powerCostByStage: Mapping[Money],
+		accumulatedPowerCost: Money,
+		expirationCost: ExpirationCost,
+		accumulatedExpirationCost: Money,
 		graphProjection: Mapping[FlowProjectionPieceCalculator.StageProjection]
 	)
 
@@ -48,7 +49,7 @@ class PlanCostCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 		upstreamTrajectory: Trajectory[Queue],
 		powerPlan: PowerPlan[closedGraph.type],
 		sourceByPath: Map[Path, Source[?]]
-	): Trajectory[Log] = {
+	): Trajectory[ResultAtPiece] = {
 		val upstreamTools = new UpstreamTools[piecewiseAlgebra.type](piecewiseAlgebra);
 		val upstreamTrajectoryFor = upstreamTools.buildTrajectoryBySourceGetter(upstreamTrajectory, sourceByPath);
 		calc(initialInputQueue, upstreamTrajectoryFor, powerPlan);
@@ -58,31 +59,32 @@ class PlanCostCalculator[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 		initialInputQueue: Mapping[Queue],
 		upstreamTrajectoryBySource: SourceN[?] => Trajectory[Queue],
 		powerPlan: PowerPlan[closedGraph.type],
-	): Trajectory[Log] = {
-		
-		var accumulatedExpirationCost: Money = ZERO_MONEY;
-		var accumulatedPowerCost: Money = ZERO_MONEY;
+	): Trajectory[ResultAtPiece] = {
 
-		buildTrajectory[Mapping[Queue], Log](initialInputQueue) {
+		var previousPieceAccumulatedPowerCost: Money = ZERO_MONEY;
+		var previousPieceAccumulatedExpirationCost: Money = ZERO_MONEY;
+
+		buildTrajectory[Mapping[Queue], ResultAtPiece](initialInputQueue) {
 			(inputQueueAtStart: Mapping[Queue], pieceIndex: PieceIndex, start: Instant, end: Instant) =>
 
-				val powerCostByStage = powerPlan.getCostAt(pieceIndex);
-				val totalPowerCost: Money = powerCostByStage.iterator.reduce[Money]{ (a, b) => a.plus(b) }
-				accumulatedPowerCost = accumulatedPowerCost.plus(totalPowerCost);
+				val powerCostByStage: Mapping[Money] = powerPlan.getCostAt(pieceIndex);
+				val piecePowerCost: Money = powerCostByStage.iterator.reduce[Money]{ (a, b) => a.plus(b) }
+				val accumulatedPowerCost: Money = previousPieceAccumulatedPowerCost.plus(piecePowerCost);
+				previousPieceAccumulatedPowerCost = accumulatedPowerCost;
 
-				val power = powerPlan.getPowerAt(pieceIndex);
-				val graphProjection = flowProjectionPieceCalculator.calc(pieceIndex, inputQueueAtStart, power) {
+				val power: Mapping[Quantity] = powerPlan.getPowerAt(pieceIndex);
+				val graphProjection: Mapping[StageProjection] = flowProjectionPieceCalculator.calc(pieceIndex, inputQueueAtStart, power) {
 					source => upstreamTrajectoryBySource(source).getValueAt(pieceIndex)
 				};
 
 				val processed = graphProjection.map(_.processed);
-				val expirationCost = expirationCostAtCompletionPieceCalculator.calcExpirationCost(piecewiseAlgebra.firstPieceStartingInstant, start, end, processed);
-				
-				accumulatedExpirationCost = accumulatedExpirationCost.plus(expirationCost.total);
+				val pieceExpirationCost = expirationCostAtCompletionPieceCalculator.calcExpirationCost(piecewiseAlgebra.firstPieceStartingInstant, start, end, processed);
+				val accumulatedExpirationCost: Money = previousPieceAccumulatedExpirationCost.plus(pieceExpirationCost.total);
+				previousPieceAccumulatedExpirationCost = accumulatedExpirationCost;
 
-				Log(totalPowerCost, powerCostByStage, accumulatedPowerCost, expirationCost, accumulatedExpirationCost, graphProjection)
+				ResultAtPiece(piecePowerCost, powerCostByStage, accumulatedPowerCost, pieceExpirationCost, accumulatedExpirationCost, graphProjection)
 		} {
-			(_, log) => log.graphProjection.map(_.inputQueueAtEnd)
+			(_, resultAtPiece) => resultAtPiece.graphProjection.map(_.inputQueueAtEnd)
 		}
 	}
 }

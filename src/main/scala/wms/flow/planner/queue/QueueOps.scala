@@ -20,7 +20,10 @@ trait QueueOps[Q] {
 		/** Creates a queue that is the result of merging two queues as if they where generated simultaneously at constant speed.
 		  * For example, if the queues were FIFO with loads (a1, a2) and (b1,b2,b3), then the resulting queue would be (b1,a1,b2,b3,a2) or (b1,a1,b2,a2,b3) */
 		def mergedWith(thatQueue: Q): Q
+		
+		/** Creates a queue that is the result of removing from this queue the elements that are in the received queue. */
 		def except(thatQueue: Q): Q
+		
 		def consumed(quantity: Quantity)(using atStage: Stage, atPiece: PieceIndex): Consumption[Q]
 
 		/** Travels the [[Heap]]s of this queue in order, giving the time fragments during which each heap would be consumed if the whole queue consumption started and ended at the specified instants; assuming the consumption speed is constant.

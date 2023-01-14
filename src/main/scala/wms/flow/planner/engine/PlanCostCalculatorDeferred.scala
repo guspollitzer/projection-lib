@@ -57,7 +57,7 @@ class PlanCostCalculatorDeferred[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 	def calc(
 		initialInputQueue: Mapping[Queue],
 		upstreamTrajectoryBySource: SourceN[?] => Trajectory[Queue],
-		powerPlan: Trajectory[Mapping[PowerAndCost]]
+		powerPlan: Trajectory[Mapping[PowerAndCost]] // no me gusta. Considerar volver al trait PowerPlan que comenté arriba
 	): Trajectory[ResultAtPiece] = {
 		val calcFunction = buildCalcFunction(initialInputQueue, upstreamTrajectoryBySource);
 
@@ -111,18 +111,17 @@ class PlanCostCalculatorDeferred[PA <: PiecewiseAlgebra, CG <: ClosedGraph](
 							source => upstreamTrajectoryBySource(source).getValueAt(pieceIndex)
 						}
 				};
-				val expirationCostRef: Ref[ExpirationCost] = graphProjectionRef.map {
+				val pieceExpirationCostRef: Ref[ExpirationCost] = graphProjectionRef.map {
 					graphProjection =>
 						val processed = graphProjection.map(_.processed);
 						expirationCostAtCompletionPieceCalculator.calcExpirationCost(piecewiseAlgebra.firstPieceStartingInstant, start, end, processed)
 				};
-
-				val accumulatedExpirationCostRef: Ref[Money] = sheet.map2(previousPieceAccumulatedExpirationCostRef, expirationCostRef) {
+				val accumulatedExpirationCostRef: Ref[Money] = sheet.map2(previousPieceAccumulatedExpirationCostRef, pieceExpirationCostRef) {
 					(previousAccumulatedExpirationCost, expirationCost) => previousAccumulatedExpirationCost.plus(expirationCost.total)
 				};
 				previousPieceAccumulatedExpirationCostRef = accumulatedExpirationCostRef;
 
-				val resultAtPieceRef: Ref[ResultAtPiece] = sheet.map6(piecePowerCostRef, powerAndCostByStageOrdinalRef, accumulatedPowerCostRef, expirationCostRef, accumulatedExpirationCostRef, graphProjectionRef) {
+				val resultAtPieceRef: Ref[ResultAtPiece] = sheet.map6(piecePowerCostRef, powerAndCostByStageOrdinalRef, accumulatedPowerCostRef, pieceExpirationCostRef, accumulatedExpirationCostRef, graphProjectionRef) {
 					(piecePowerCost, powerAndCostByStageOrdinal, accumulatedPowerCost, expirationCost, accumulatedExpirationCost, graphProjection) =>
 					ResultAtPiece(piecePowerCost, closedGraph.fromIterable(powerAndCostByStageOrdinal.map(_.cost)), accumulatedPowerCost, expirationCost, accumulatedExpirationCost, graphProjection)
 				};
